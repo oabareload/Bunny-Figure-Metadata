@@ -48,15 +48,35 @@ class BFM_Admin {
 
 		$entities = BFM_Meta_Fields::entities();
 
-		$first_slug  = array_key_first( $entities );
-		$first_label = $entities[ $first_slug ]['label'];
+		$first_slug = array_key_first( $entities );
+
+		/*
+		 * Build exactly one render callback per entity slug and reuse it for
+		 * both add_menu_page() and add_submenu_page() when the same slug is
+		 * used for both (the first entity acts as the top-level page).
+		 *
+		 * WordPress derives its internal admin hook name from the page slug,
+		 * so the top-level page and its same-slug first submenu resolve to
+		 * the identical hook. If each call is given a freshly created
+		 * closure, WordPress cannot recognize them as the same callback
+		 * (each closure has a distinct object identity) and hooks both,
+		 * causing the page to render twice. Reusing one closure instance
+		 * per slug lets WordPress's own callback-deduplication collapse the
+		 * two registrations into a single hook entry, exactly as it already
+		 * does when the same callable is passed to both calls.
+		 */
+		$callbacks = array();
+
+		foreach ( $entities as $slug => $entity ) {
+			$callbacks[ $slug ] = $this->render_callback_for( $slug );
+		}
 
 		add_menu_page(
 			__( 'Bunny Figure Metadata', 'bunny-figure-metadata' ),
 			__( 'Figure Metadata', 'bunny-figure-metadata' ),
 			'manage_options',
 			self::page_slug( $first_slug ),
-			$this->render_callback_for( $first_slug ),
+			$callbacks[ $first_slug ],
 			'dashicons-tag',
 			57
 		);
@@ -68,7 +88,7 @@ class BFM_Admin {
 				$entity['label'],
 				'manage_options',
 				self::page_slug( $slug ),
-				$this->render_callback_for( $slug )
+				$callbacks[ $slug ]
 			);
 		}
 	}
