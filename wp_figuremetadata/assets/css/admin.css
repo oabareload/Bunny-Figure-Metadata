@@ -1,0 +1,43 @@
+/**
+ * Bunny Figure Metadata — Admin Styles
+ *
+ * Plugin-specific admin UI. Extends bunny-admin.css (shared base).
+ * Only Bunny Figure Metadata-specific styles live here.
+ *
+ * @package BunnyFigureMetadata
+ * @since   0.1.0
+ */
+
+/* ==========================================================================
+   Box / card
+   ========================================================================== */
+
+.bfm-box {
+	background: #fff;
+	border: 1px solid var(--bunny-border);
+	border-radius: var(--bunny-radius);
+	padding: 22px 24px;
+	margin-bottom: 20px;
+}
+
+.bfm-box-title {
+	font-size: 13px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: var(--bunny-text-muted);
+	margin: 0 0 18px;
+	padding-bottom: 12px;
+	border-bottom: 1px solid var(--bunny-border);
+	display: flex;
+	align-items: baseline;
+	gap: 8px;
+}
+
+.bfm-box-subtitle {
+	font-size: 11px;
+	color: var(--bunny-text-subtle);
+	font-weight: 400;
+	text-transform: none;
+	letter-spacing: 0;
+}
