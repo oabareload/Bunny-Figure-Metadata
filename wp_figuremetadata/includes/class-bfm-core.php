@@ -72,11 +72,16 @@ class BFM_Core {
 		require_once BFM_PATH . 'includes/class-bfm-post-editor.php';
 		require_once BFM_PATH . 'includes/class-bfm-tag-sync.php';
 		require_once BFM_PATH . 'includes/class-bfm-entity-repository.php';
+		require_once BFM_PATH . 'includes/class-bfm-entity-tag-map.php';
+		require_once BFM_PATH . 'includes/class-bfm-entity-info-map.php';
 
-		// Admin is only needed in wp-admin, to avoid loading it on the front end.
+		// Admin (and its AJAX endpoints) is only needed in wp-admin, to avoid
+		// loading it on the front end. is_admin() is also true during
+		// admin-ajax.php requests, so this correctly covers both cases.
 		if ( is_admin() ) {
 			require_once BFM_PATH . 'admin/class-bfm-admin-header.php';
 			require_once BFM_PATH . 'admin/class-bfm-admin.php';
+			require_once BFM_PATH . 'admin/class-bfm-admin-ajax.php';
 		}
 	}
 
@@ -108,6 +113,12 @@ class BFM_Core {
 			$admin = new BFM_Admin();
 			add_action( 'admin_menu', [ $admin, 'register_menu' ] );
 			add_action( 'admin_enqueue_scripts', [ $admin, 'enqueue_assets' ] );
+		}
+
+		// ── Admin AJAX (entity → TAG association) ─────────────────────────────
+		if ( is_admin() && class_exists( 'BFM_Admin_Ajax' ) ) {
+			$admin_ajax = new BFM_Admin_Ajax();
+			$admin_ajax->register_hooks();
 		}
 
 		// ── Plugin action links (Manufacturers link in plugin list) ───────────

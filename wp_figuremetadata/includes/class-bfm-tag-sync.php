@@ -7,8 +7,33 @@
  * Only tags generated from the configured tag-source metadata fields
  * are managed here. Manually assigned tags remain untouched.
  *
+ * Sync only runs when the post's resulting status is 'publish' or
+ * 'future' (scheduled) — never while a post is a draft, pending review,
+ * or otherwise unpublished. This is a plain status check inside
+ * sync_tags() rather than a dedicated transition_post_status hook,
+ * specifically because transition_post_status fires *before* save_post
+ * within wp_insert_post(), i.e. before this plugin's own metadata save
+ * (BFM_Post_Editor, also hooked on save_post_post) has written the
+ * freshly submitted chip values. Hooking on save_post_post (as before)
+ * and simply checking the resulting status keeps sync reading the
+ * metadata that was just saved in the same request, for both a normal
+ * editor publish and WordPress's own scheduled-post auto-publish
+ * (wp_publish_post() re-fires save_post_post as well), while never
+ * touching tags for drafts.
+ *
+ * For each source value:
+ *   1. An existing Metadata -> TAG association (BFM_Entity_Tag_Map) is
+ *      used when present and it still points to a real post_tag term.
+ *   2. Otherwise, a same-named tag is reused if one exists, or created
+ *      if not — and either way, that resolved term_id is written back
+ *      into BFM_Entity_Tag_Map, so future syncs (and the entity admin
+ *      screens) see the association directly via step 1.
+ *
+ * This process is idempotent: re-running it (e.g. when a scheduled post
+ * later auto-publishes) always converges to the same desired tag set.
+ *
  * Migrated from the bunny-figure-metadata-editor.php production snippet
- * without changing behavior.
+ * without changing its original (name-based) fallback behavior.
  *
  * @package BunnyFigureMetadata
  */
@@ -47,6 +72,16 @@ class BFM_Tag_Sync {
 			return;
 		}
 
+		/*
+		 * Never create or associate tags for unpublished content. Sync only
+		 * runs once the post's resulting status is publish or scheduled.
+		 */
+		$status = get_post_status( $post_id );
+
+		if ( ! in_array( $status, array( 'publish', 'future' ), true ) ) {
+			return;
+		}
+
 		if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
 			return;
 		}
@@ -60,6 +95,13 @@ class BFM_Tag_Sync {
 		}
 
 		$desired_names = array();
+
+		/*
+		 * Remember which meta key each name first came from, so we can
+		 * look up its Metadata -> TAG association (BFM_Entity_Tag_Map is
+		 * keyed by meta_key + value name) when resolving term IDs below.
+		 */
+		$name_sources = array();
 
 		foreach ( BFM_Meta_Fields::tag_sources() as $meta_key ) {
 
@@ -89,6 +131,10 @@ class BFM_Tag_Sync {
 				 */
 				if ( BFM_Meta_Fields::excluded_value() === strtolower( $name ) ) {
 					continue;
+				}
+
+				if ( ! isset( $name_sources[ $name ] ) ) {
+					$name_sources[ $name ] = $meta_key;
 				}
 
 				$desired_names[] = $name;
@@ -140,31 +186,68 @@ class BFM_Tag_Sync {
 
 		/*
 		 * Resolve desired names to term IDs.
+		 *
+		 * For each name, the Metadata -> TAG association configured on the
+		 * entity admin screens (BFM_Entity_Tag_Map) is checked first. If an
+		 * association exists and still points to a real post_tag term, it is
+		 * used as-is. Otherwise, the existing behavior applies unchanged:
+		 * reuse a same-named tag if one exists, or create one.
 		 */
 		$desired_ids = array();
 
 		foreach ( $desired_names as $name ) {
 
-			$term = term_exists(
-				$name,
-				'post_tag'
-			);
+			$term_id = 0;
 
-			if ( ! $term ) {
+			$source_meta_key = $name_sources[ $name ] ?? '';
 
-				$term = wp_insert_term(
+			if ( '' !== $source_meta_key ) {
+
+				$associated_id = BFM_Entity_Tag_Map::get( $source_meta_key, $name );
+
+				if ( $associated_id > 0 ) {
+
+					$associated_term = get_term( $associated_id, 'post_tag' );
+
+					if ( $associated_term && ! is_wp_error( $associated_term ) ) {
+						$term_id = absint( $associated_id );
+					}
+				}
+			}
+
+			if ( ! $term_id ) {
+
+				$term = term_exists(
 					$name,
 					'post_tag'
 				);
-			}
 
-			if ( is_wp_error( $term ) ) {
-				continue;
-			}
+				if ( ! $term ) {
 
-			$term_id = is_array( $term )
-				? absint( $term['term_id'] )
-				: absint( $term );
+					$term = wp_insert_term(
+						$name,
+						'post_tag'
+					);
+				}
+
+				if ( is_wp_error( $term ) ) {
+					continue;
+				}
+
+				$term_id = is_array( $term )
+					? absint( $term['term_id'] )
+					: absint( $term );
+
+				/*
+				 * Persist this newly resolved tag (found by name, or just
+				 * created) as the entity's association, so future syncs and
+				 * the entity admin screens reuse it directly via step 1/2
+				 * above instead of re-resolving by name every time.
+				 */
+				if ( $term_id && '' !== $source_meta_key ) {
+					BFM_Entity_Tag_Map::set( $source_meta_key, $name, $term_id );
+				}
+			}
 
 			if ( $term_id ) {
 				$desired_ids[] = $term_id;

@@ -5,9 +5,12 @@
  * Registers, renders, and saves structured figure metadata in the
  * classic WordPress post editor.
  *
- * Migrated from the bunny-figure-metadata-editor.php production snippet
- * without changing behavior: same fields, same metabox, same nonce,
- * same autocomplete-on-"&"-separated-values UX.
+ * The four entity fields (Manufacturer, Illustrator, Series, Character)
+ * are edited as removable chips, with autocomplete sourced from existing
+ * administered entity values (BFM_Entity_Repository) rather than from
+ * WordPress tags. Internally, the value is still stored and submitted as
+ * a single "A & B" plain-text string in a hidden input, exactly as
+ * before — only the editing UI changed, not the storage format.
  *
  * @package BunnyFigureMetadata
  */
@@ -115,29 +118,25 @@ class BFM_Post_Editor {
 				true
 			);
 
+			echo '<div class="bfm-figure-meta-field">';
+
 			printf(
-				'<div class="bfm-figure-meta-field">
-					<label for="%1$s"><strong>%2$s</strong></label>
-					<input
-						type="text"
-						id="%1$s"
-						name="%1$s"
-						value="%3$s"
-						class="widefat%4$s"
-						autocomplete="off"
-						%5$s
-					>
-					%6$s
-				</div>',
+				'<label for="%1$s"><strong>%2$s</strong></label>',
 				esc_attr( $meta_key ),
-				esc_html( $field['label'] ),
-				esc_attr( $value ),
-				$is_tag_source ? ' bfm-figure-tag-autocomplete' : '',
-				$is_tag_source ? 'data-bfm-tag-autocomplete="1"' : '',
-				$is_tag_source
-					? '<p class="description">Puedes usar <code>&amp;</code> para agregar varios valores.</p>'
-					: ''
+				esc_html( $field['label'] )
 			);
+
+			if ( $is_tag_source ) {
+				$this->render_chip_field( $meta_key, $value );
+			} else {
+				printf(
+					'<input type="text" id="%1$s" name="%1$s" value="%2$s" class="widefat" autocomplete="off">',
+					esc_attr( $meta_key ),
+					esc_attr( $value )
+				);
+			}
+
+			echo '</div>';
 		}
 
 		echo '</div>';
@@ -147,6 +146,35 @@ class BFM_Post_Editor {
 			'Estos datos se guardan como metadata estructurada de la figura.'
 		);
 		echo '</p>';
+	}
+
+	/**
+	 * Render a chip-based field for one of the four entity meta keys
+	 * (Manufacturer, Illustrator, Series, Character).
+	 *
+	 * The actual form field submitted (and read by save_metadata()) is a
+	 * hidden input holding the same "A & B" plain-text format as before;
+	 * BFM_Post_Editor_Chips (JS) renders/edits it as chips and keeps the
+	 * hidden input in sync. No change to how the value is stored.
+	 *
+	 * @param string $meta_key Meta key (e.g. _bunny_figure_manufacturer).
+	 * @param string $value    Current raw "A & B" stored value.
+	 * @return void
+	 */
+	private function render_chip_field( string $meta_key, string $value ): void {
+
+		printf(
+			'<div class="bfm-figure-chip-field" data-meta-key="%1$s">
+				<input type="hidden" id="%1$s" name="%1$s" value="%2$s">
+				<div class="bfm-figure-chip-list"></div>
+				<input type="text" class="bfm-figure-chip-input widefat" placeholder="%3$s" autocomplete="off">
+			</div>
+			<p class="description">%4$s</p>',
+			esc_attr( $meta_key ),
+			esc_attr( $value ),
+			esc_attr__( 'Agregar...', 'bunny-figure-metadata' ),
+			esc_html__( 'Escribe para buscar entre los valores de entidad existentes, o presiona Enter para agregar uno nuevo.', 'bunny-figure-metadata' )
+		);
 	}
 
 	/**
@@ -226,7 +254,7 @@ class BFM_Post_Editor {
 	}
 
 	/**
-	 * Load autocomplete assets only on the post editor.
+	 * Load chip-field assets only on the post editor for the 'post' type.
 	 *
 	 * @param string $hook_suffix Current admin page hook.
 	 * @return void
@@ -250,134 +278,45 @@ class BFM_Post_Editor {
 			return;
 		}
 
-		wp_enqueue_script( 'jquery-ui-autocomplete' );
-
-		$ajax_url = admin_url( 'admin-ajax.php' );
-
-		$script = '
-		(function($) {
-			"use strict";
-
-			$(function() {
-
-				var $fields = $(".bfm-figure-tag-autocomplete");
-
-				if (!$fields.length) {
-					return;
-				}
-
-				$fields.each(function() {
-
-					var $input = $(this);
-
-					$input.autocomplete({
-						minLength: 2,
-
-						source: function(request, response) {
-
-							/*
-							 * Only search the value currently being typed.
-							 *
-							 * Example:
-							 * Good Smile Company & Max
-							 *
-							 * The autocomplete searches only:
-							 * Max
-							 */
-							var value = request.term || "";
-							var parts = value.split("&");
-							var current = $.trim(parts.pop() || "");
-
-							if (current.length < 2) {
-								response([]);
-								return;
-							}
-
-							$.ajax({
-								url: ' . wp_json_encode( $ajax_url ) . ',
-								dataType: "text",
-								data: {
-									action: "ajax-tag-search",
-									tax: "post_tag",
-									q: current,
-									number: 20
-								}
-							})
-							.done(function(data) {
-
-								var results = $.trim(data);
-
-								if (!results) {
-									response([]);
-									return;
-								}
-
-								var names = results.split(/\\r?\\n/);
-
-								response(
-									$.map(names, function(name) {
-
-										name = $.trim(name);
-
-										if (!name) {
-											return null;
-										}
-
-										return {
-											label: name,
-											value: name
-										};
-									})
-								);
-							})
-							.fail(function() {
-								response([]);
-							});
-						},
-
-						select: function(event, ui) {
-
-							var value = $input.val() || "";
-							var parts = value.split("&");
-
-							/*
-							 * Remove the text currently being typed.
-							 */
-							parts.pop();
-
-							/*
-							 * Clean previous values.
-							 */
-							parts = $.map(parts, function(part) {
-								part = $.trim(part);
-								return part ? part : null;
-							});
-
-							/*
-							 * Add the selected TAG.
-							 */
-							parts.push(ui.item.value);
-
-							/*
-							 * Keep the separator ready for another value.
-							 */
-							$input.val(parts.join(" & ") + " & ");
-
-							return false;
-						}
-					});
-
-				});
-
-			});
-
-		})(jQuery);
-	';
-
-		wp_add_inline_script(
-			'jquery-ui-autocomplete',
-			$script
+		wp_enqueue_script(
+			'bfm-post-editor-chips',
+			BFM_URL . 'assets/js/post-editor-chips.js',
+			array( 'jquery', 'jquery-ui-autocomplete' ),
+			BFM_VERSION,
+			true
 		);
+
+		wp_localize_script(
+			'bfm-post-editor-chips',
+			'BFM_POST_EDITOR_CHIPS',
+			array(
+				'suggestions' => $this->get_entity_suggestions(),
+				'i18n'        => array(
+					'remove' => __( 'Quitar', 'bunny-figure-metadata' ),
+				),
+			)
+		);
+	}
+
+	/**
+	 * Preload the existing entity values for each of the four chip fields,
+	 * so the editor's autocomplete is based on administered entity values
+	 * (BFM_Entity_Repository, the same source used by the admin screens),
+	 * not on WordPress tags. A fixed 4 queries per post-edit screen load
+	 * (one per tag-source meta key), reusing the existing aggregated
+	 * query — no per-keystroke AJAX calls, no N+1.
+	 *
+	 * @return array<string, array<int, string>> meta_key => value names.
+	 */
+	private function get_entity_suggestions(): array {
+
+		$suggestions = array();
+
+		foreach ( BFM_Meta_Fields::tag_sources() as $meta_key ) {
+			$suggestions[ $meta_key ] = array_keys( BFM_Entity_Repository::get_values_with_counts( $meta_key ) );
+		}
+
+		return $suggestions;
 	}
 
 	/**
@@ -410,8 +349,46 @@ class BFM_Post_Editor {
 				margin-top: 5px;
 			}
 
-			.bfm-figure-tag-autocomplete {
+			.bfm-figure-chip-field {
 				position: relative;
+			}
+
+			.bfm-figure-chip-list {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 6px;
+			}
+
+			.bfm-figure-chip-list:not(:empty) {
+				margin-bottom: 6px;
+			}
+
+			.bfm-figure-chip {
+				display: inline-flex;
+				align-items: center;
+				gap: 6px;
+				background: #f0f0f7;
+				border: 1px solid #dcdcec;
+				color: #3c2a80;
+				font-size: 12px;
+				font-weight: 600;
+				padding: 4px 6px 4px 10px;
+				border-radius: 20px;
+			}
+
+			.bfm-figure-chip-remove {
+				background: none;
+				border: none;
+				color: inherit;
+				cursor: pointer;
+				font-size: 14px;
+				line-height: 1;
+				padding: 0 2px;
+				opacity: 0.7;
+			}
+
+			.bfm-figure-chip-remove:hover {
+				opacity: 1;
 			}
 
 			.ui-autocomplete {

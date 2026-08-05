@@ -106,8 +106,9 @@ class BFM_Admin {
 	}
 
 	/**
-	 * Render an entity admin page: capability check, fetch values via
-	 * the repository (single aggregated query), include the view.
+	 * Render an entity admin page: capability check, then either the
+	 * value list (default) or, when a `value` query var is present, the
+	 * drill-down list of posts containing that exact value.
 	 *
 	 * @param string $slug Entity slug.
 	 * @return void
@@ -125,7 +126,36 @@ class BFM_Admin {
 		}
 
 		$entity = $entities[ $slug ];
+
+		$value = isset( $_GET['value'] ) ? sanitize_text_field( wp_unslash( $_GET['value'] ) ) : '';
+
+		if ( '' !== $value ) {
+			$this->render_entity_posts_page( $slug, $entity, $value );
+			return;
+		}
+
+		$this->render_entity_list_page( $slug, $entity );
+	}
+
+	/**
+	 * Render the entity value list (the default screen): fetch values via
+	 * the repository (single aggregated query), sort them per the
+	 * requested column, resolve their associated tags and complementary
+	 * info in a single batch each, and include the view.
+	 *
+	 * @param string              $slug   Entity slug.
+	 * @param array<string,string> $entity Entity definition.
+	 * @return void
+	 */
+	private function render_entity_list_page( string $slug, array $entity ): void {
+
+		list( $orderby, $order ) = $this->current_sort();
+
 		$values = BFM_Entity_Repository::get_values_with_counts( $entity['meta_key'] );
+		$values = BFM_Entity_Repository::sort_values( $values, $orderby, $order );
+
+		list( $tag_map, $tag_names ) = $this->resolve_tag_associations( $entity['meta_key'] );
+		list( $info_map, $logo_previews ) = $this->resolve_entity_info( $entity['meta_key'] );
 
 		$view_file = BFM_PATH . 'admin/views/' . $slug . '.php';
 
@@ -137,7 +167,191 @@ class BFM_Admin {
 	}
 
 	/**
-	 * Enqueue admin CSS only on this plugin's own screens.
+	 * Render the drill-down list of posts that contain an exact entity
+	 * value, paginated. Generic across all four entities: it only needs
+	 * the entity definition (label + meta_key) and the value to filter by.
+	 *
+	 * @param string              $slug   Entity slug.
+	 * @param array<string,string> $entity Entity definition.
+	 * @param string              $value  Exact entity value to filter by.
+	 * @return void
+	 */
+	private function render_entity_posts_page( string $slug, array $entity, string $value ): void {
+
+		$paged    = isset( $_GET['paged'] ) ? absint( $_GET['paged'] ) : 1;
+		$per_page = 20;
+
+		$result = BFM_Entity_Repository::get_posts_for_value( $entity['meta_key'], $value, $paged, $per_page );
+
+		$rows = array_map( array( $this, 'build_post_row' ), $result['posts'] );
+
+		$total       = $result['total'];
+		$total_pages = $result['total_pages'];
+		$paged       = max( 1, min( $paged, max( 1, $total_pages ) ) );
+
+		$view_file = BFM_PATH . 'admin/views/entity-posts.php';
+
+		if ( ! file_exists( $view_file ) ) {
+			wp_die( esc_html__( 'View not found.', 'bunny-figure-metadata' ) );
+		}
+
+		require $view_file;
+	}
+
+	/**
+	 * Build the display-ready data for a single row of the drill-down
+	 * posts table. Category/tag lookups hit WP_Query's own term cache
+	 * (primed for the whole result set by get_posts_for_value()), and the
+	 * thumbnail lookup hits its primed meta cache — neither issues a new
+	 * query per row.
+	 *
+	 * @param WP_Post $post Post object.
+	 * @return array<string, mixed>
+	 */
+	public function build_post_row( WP_Post $post ): array {
+
+		$categories = get_the_category( $post->ID );
+		$tags       = get_the_tags( $post->ID );
+
+		$edit_url = current_user_can( 'edit_post', $post->ID ) ? get_edit_post_link( $post->ID, 'raw' ) : '';
+
+		return array(
+			'id'         => $post->ID,
+			'title'      => get_the_title( $post ),
+			'thumbnail'  => get_the_post_thumbnail_url( $post, 'thumbnail' ) ?: '',
+			'categories' => $categories && ! is_wp_error( $categories ) ? wp_list_pluck( $categories, 'name' ) : array(),
+			'tags'       => $tags && ! is_wp_error( $tags ) ? wp_list_pluck( $tags, 'name' ) : array(),
+			'date'       => get_the_date( '', $post ),
+			'modified'   => get_the_modified_date( '', $post ),
+			'edit_url'   => $edit_url ?: '',
+			'view_url'   => get_permalink( $post ),
+		);
+	}
+
+	/**
+	 * Read and sanitize the requested sort column/direction from the
+	 * (non-destructive, read-only) query string. Defaults preserve the
+	 * table's original order: most posts first, name ascending.
+	 *
+	 * @return array{0: string, 1: string} [ orderby, order ]
+	 */
+	private function current_sort(): array {
+
+		$allowed_orderby = array( 'name', 'posts' );
+		$allowed_order   = array( 'asc', 'desc' );
+
+		$orderby = 'posts';
+		if ( isset( $_GET['orderby'] ) ) {
+			$requested = sanitize_key( wp_unslash( $_GET['orderby'] ) );
+			if ( in_array( $requested, $allowed_orderby, true ) ) {
+				$orderby = $requested;
+			}
+		}
+
+		$order = 'desc';
+		if ( isset( $_GET['order'] ) ) {
+			$requested = strtolower( sanitize_key( wp_unslash( $_GET['order'] ) ) );
+			if ( in_array( $requested, $allowed_order, true ) ) {
+				$order = $requested;
+			}
+		}
+
+		return array( $orderby, $order );
+	}
+
+	/**
+	 * Resolve every stored tag association for a meta key in a single
+	 * batched term query, instead of one get_term() call per row.
+	 *
+	 * @param string $meta_key Source meta key.
+	 * @return array{0: array<string,int>, 1: array<int,string>} [ value => term_id, term_id => term_name ]
+	 */
+	private function resolve_tag_associations( string $meta_key ): array {
+
+		$tag_map  = BFM_Entity_Tag_Map::get_for_meta_key( $meta_key );
+		$term_ids = array_values( array_unique( array_filter( array_map( 'absint', $tag_map ) ) ) );
+
+		$tag_names = array();
+
+		if ( ! empty( $term_ids ) ) {
+
+			$terms = get_terms(
+				array(
+					'taxonomy'   => 'post_tag',
+					'include'    => $term_ids,
+					'hide_empty' => false,
+				)
+			);
+
+			if ( ! is_wp_error( $terms ) ) {
+				foreach ( $terms as $term ) {
+					$tag_names[ $term->term_id ] = $term->name;
+				}
+			}
+		}
+
+		return array( $tag_map, $tag_names );
+	}
+
+	/**
+	 * Resolve complementary info (URL + logo) for every value under a
+	 * meta key, and batch-resolve logo thumbnail URLs.
+	 *
+	 * The Media Library thumbnails cannot be fetched with a single query
+	 * the way get_terms() can for tags (there is no core "get many
+	 * attachments' image src" API), so instead a single get_posts() call
+	 * primes WordPress's own post/meta object cache for every attachment
+	 * ID involved; the subsequent wp_get_attachment_image_src() calls
+	 * then hit that cache instead of issuing new queries.
+	 *
+	 * @param string $meta_key Source meta key.
+	 * @return array{0: array<string,array{url:string,image_id:int}>, 1: array<int,string>} [ value => info, image_id => thumbnail_url ]
+	 */
+	private function resolve_entity_info( string $meta_key ): array {
+
+		$info_map = BFM_Entity_Info_Map::get_for_meta_key( $meta_key );
+
+		$image_ids = array_values(
+			array_unique(
+				array_filter(
+					array_map(
+						static function ( $entry ) {
+							return absint( $entry['image_id'] ?? 0 );
+						},
+						$info_map
+					)
+				)
+			)
+		);
+
+		$logo_previews = array();
+
+		if ( ! empty( $image_ids ) ) {
+
+			// Prime the post/meta cache for all involved attachments in one query.
+			get_posts(
+				array(
+					'post_type'      => 'attachment',
+					'post_status'    => 'inherit',
+					'post__in'       => $image_ids,
+					'posts_per_page' => count( $image_ids ),
+					'orderby'        => 'post__in',
+				)
+			);
+
+			foreach ( $image_ids as $image_id ) {
+				$thumbnail = wp_get_attachment_image_src( $image_id, 'thumbnail' );
+				if ( $thumbnail ) {
+					$logo_previews[ $image_id ] = $thumbnail[0];
+				}
+			}
+		}
+
+		return array( $info_map, $logo_previews );
+	}
+
+	/**
+	 * Enqueue admin CSS/JS only on this plugin's own screens.
 	 *
 	 * @param string $hook Current admin page hook.
 	 * @return void
@@ -160,6 +374,65 @@ class BFM_Admin {
 			BFM_URL . 'assets/css/admin.css',
 			array( 'bfm-bunny-admin' ),
 			BFM_VERSION
+		);
+
+		wp_enqueue_script(
+			'bfm-entity-tag-select',
+			BFM_URL . 'assets/js/entity-tag-select.js',
+			array( 'jquery', 'jquery-ui-autocomplete' ),
+			BFM_VERSION,
+			true
+		);
+
+		wp_localize_script(
+			'bfm-entity-tag-select',
+			'BFM_ENTITY_TAG',
+			array(
+				'ajaxUrl'      => admin_url( 'admin-ajax.php' ),
+				'nonce'        => wp_create_nonce( BFM_Admin_Ajax::NONCE_ACTION ),
+				'searchAction' => 'bfm_search_tags',
+				'setAction'    => 'bfm_set_entity_tag',
+				'removeAction' => 'bfm_remove_entity_tag',
+				'i18n'         => array(
+					'select'   => __( 'Seleccionar TAG...', 'bunny-figure-metadata' ),
+					'remove'   => __( 'Quitar TAG', 'bunny-figure-metadata' ),
+					'saving'   => __( 'Guardando...', 'bunny-figure-metadata' ),
+					'removing' => __( 'Quitando...', 'bunny-figure-metadata' ),
+					'error'    => __( 'Ocurrió un error. Inténtalo de nuevo.', 'bunny-figure-metadata' ),
+				),
+			)
+		);
+
+		// Media Library integration (Featured-Image-style logo picker).
+		wp_enqueue_media();
+
+		wp_enqueue_script(
+			'bfm-entity-info',
+			BFM_URL . 'assets/js/entity-info.js',
+			array( 'jquery' ),
+			BFM_VERSION,
+			true
+		);
+
+		wp_localize_script(
+			'bfm-entity-info',
+			'BFM_ENTITY_INFO',
+			array(
+				'ajaxUrl'           => admin_url( 'admin-ajax.php' ),
+				'nonce'             => wp_create_nonce( BFM_Admin_Ajax::NONCE_ACTION ),
+				'setUrlAction'      => 'bfm_set_entity_url',
+				'setImageAction'    => 'bfm_set_entity_image',
+				'removeImageAction' => 'bfm_remove_entity_image',
+				'i18n'              => array(
+					'selectImage' => __( 'Seleccionar logo', 'bunny-figure-metadata' ),
+					'useImage'    => __( 'Usar esta imagen', 'bunny-figure-metadata' ),
+					'upload'      => __( 'Subir imagen', 'bunny-figure-metadata' ),
+					'replace'     => __( 'Reemplazar', 'bunny-figure-metadata' ),
+					'remove'      => __( 'Eliminar', 'bunny-figure-metadata' ),
+					'saving'      => __( 'Guardando...', 'bunny-figure-metadata' ),
+					'error'       => __( 'Ocurrió un error. Inténtalo de nuevo.', 'bunny-figure-metadata' ),
+				),
+			)
 		);
 	}
 }
