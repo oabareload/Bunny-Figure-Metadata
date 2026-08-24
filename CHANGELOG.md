@@ -4,6 +4,74 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [0.8.0] - 2026-08-24
+
+### Añadido
+
+- Configuración global de metadatos en Settings: meta key, nombre visible, valor por defecto y modo catálogo/entidad.
+- Alta de nuevos metadatos desde Settings, disponibles automáticamente en el editor de posts sin modificar código.
+- Catálogos dinámicos que reutilizan la infraestructura existente de entidades, incluyendo sincronización con TAGs y administración de URL, logo, valores y posts asociados.
+- Migración automática e idempotente de los 12 campos actuales, conservando Manufacturer, Illustrator, Series y Character como catálogos y sin modificar la metadata existente de los posts.
+
+### Cambiado
+
+- Los defaults de metadata se obtienen globalmente desde Settings; ya no se configuran por publicación.
+- Los valores múltiples de cualquier metadata configurada como catálogo mantienen el formato existente separado por `&`.
+
+## [0.7.0] - 2026-08-09
+
+### Añadido
+
+- Bloque dinámico de Gutenberg `bunny-figure-metadata/featured-entities` ("Bunny Figure: Entidades destacadas"), pensado para colocarse una sola vez en el área de widgets del footer (bloques) y aparecer en todas las páginas del sitio. Presentación en lista compacta (no cards ni collage): logo opcional en proporción 1:1 alineado con la altura del texto, nombre, y cantidad de posts.
+- Panel de configuración completo: metadata a mostrar (Fabricante/Ilustrador/Serie/Personaje), cantidad de entidades, orden (Posts ↓, Posts ↑, Nombre A-Z, Nombre Z-A, Aleatorio), mostrar/ocultar logo, mostrar/ocultar cantidad de posts, enlazar o no al TAG asociado, título personalizado, elemento HTML del título (H2–H6) y clase CSS del título. Si no se configura un título personalizado, se usa uno por defecto derivado de la entidad (p. ej. "Fabricantes destacados").
+- Reutiliza íntegramente la infraestructura de entidades ya existente: `BFM_Entity_Repository` para el ranking de valores y conteos, `BFM_Entity_Tag_Map` para el enlace al TAG asociado (reutilizando el `term_id` existente, sin crear páginas nuevas), y `BFM_Entity_Info_Map` para el logo. El bloque es de solo lectura: no crea entidades, TAGs, URLs ni logos.
+- `includes/class-bfm-featured-entities-block.php` (`BFM_Featured_Entities_Block`): registro del bloque (mismo patrón sin build step que el bloque "Características") y `render_callback` con la lógica de ranking, resolución batch de TAGs/logos, y caché.
+- `blocks/featured-entities/` (`block.json`, `index.js`, `style.css`): editor en JS plano contra los globals `wp.*`, con vista previa en vivo vía `<ServerSideRender>`.
+- `BFM_Entity_Repository::sort_values_for_order()`: resuelve los cinco órdenes soportados (dos de posts, dos de nombre, y aleatorio), delegando los cuatro órdenes deterministas en el `sort_values()` ya existente — sin duplicar lógica de comparación — y añadiendo únicamente el manejo del orden aleatorio.
+- `BFM_Entity_Info_Map::get_logo_urls()`: helper estático reutilizable que resuelve en batch las URLs de miniatura de una lista de attachment IDs (un solo `get_posts()` de priming + `wp_get_attachment_image_src()` por ID, sin N+1). Extraído de la lógica que ya existía dentro de `BFM_Admin::resolve_entity_info()`, que ahora reutiliza este mismo helper en vez de duplicarla — sin cambios de comportamiento en las pantallas de administración.
+
+### Caché (nuevo en el plugin, solo para este bloque)
+
+- El resultado ya ranqueado y listo para renderizar de cada configuración de bloque se guarda en un transient de WordPress (`bfm_fe_{hash}`), evitando recalcular el ranking en cada visita del frontend. La clave de caché depende de la metadata, la cantidad, el orden, y de si logos/enlace a TAG necesitan resolverse (las únicas opciones que afectan qué datos hay que calcular).
+- Órdenes deterministas (Posts ↓/↑, Nombre A-Z/Z-A): TTL de 12 horas. Orden Aleatorio: TTL de 5 minutos, para que efectivamente pueda rotar.
+- Invalidación perezosa (lazy) basada en versión, no en enumeración de cachés activas: una única opción pequeña (`bfm_featured_entities_cache_version`) guarda un contador de versión por cada uno de los cuatro meta keys de entidad, incluido en cada clave de caché. Al publicar o programar un post, se incrementan los cuatro contadores en una sola lectura/escritura (`get_option()`/`update_option()`), sin recalcular nada de inmediato. Las cachés previas bajo la versión anterior dejan de consultarse y expiran solas por su propio TTL, en vez de buscarse y borrarse una por una.
+- La invalidación solo se dispara cuando el post resulta `publish` o `future` (mismo criterio que `BFM_Tag_Sync`, pero implementado en un hook propio de este bloque para no acoplar ambas responsabilidades); nunca en borradores, autosave o revisiones.
+- No se usa cron ni ninguna tabla nueva: el ranking se sirve desde transients (WordPress los persiste en `wp_options` si no hay un object cache persistente instalado, o en el object cache si lo hay).
+
+### No incluido en esta versión
+
+Bunny Score, páginas públicas por entidad, SEO/schema markup, integraciones externas, sincronización con X, crawling de URLs, importadores, cron, tablas de base de datos nuevas, REST API pública, funcionalidad de merge de entidades, un identificador de entidad independiente del texto de metadata, presentación en cards/collage para "Entidades destacadas" (solo lista compacta en esta versión), y panel de salud/diagnóstico.
+
+## [0.7.1] - 2026-08-10
+
+### Corregido
+
+- **Bloque "Entidades destacadas" no se podía seleccionar en el editor de Widgets.** Causa: el `edit()` del bloque envolvía el `<ServerSideRender>` en un `<div>` plano (`{ className: props.className }`) en vez de usar `blockEditor.useBlockProps()`. Con `apiVersion: 3`, el editor de bloques necesita que los props devueltos por `useBlockProps()` (que incluyen los manejadores de click/selección, `tabIndex`, `data-block`, etc.) se apliquen sobre el elemento raíz para poder vincular ese nodo del DOM con el bloque; sin ellos, el bloque se ve pero no se registra correctamente como seleccionable, algo más notorio en el editor de Widgets que en el editor de posts. Corregido en `blocks/featured-entities/index.js` reemplazando el wrapper por `el( 'div', useBlockProps(), ... )`. No se tocó el `render_callback` de PHP, el frontend ni la lógica de caché.
+
+### Añadido
+
+- **Tamaño del logo configurable** (`logoSize`, en px) en el bloque "Entidades destacadas": nuevo `RangeControl` en el panel "Visualización" del Inspector (12–96 px, por defecto **24 px**), sanitizado en `BFM_Featured_Entities_Block::sanitize_logo_size()` (entero, con `absint()`, cae al valor por defecto si es 0/no numérico, y se acota entre 12 y 96). El logo se sigue renderizando siempre en proporción 1:1 (mismo valor para `width`/`height`, tanto como atributos HTML como en un `style` inline), con `object-fit: contain` (`blocks/featured-entities/style.css`) para no deformar la imagen. La fila mantiene el logo alineado verticalmente con el texto vía `align-items: center` en el contenedor flex, sin cambios según el tamaño. El tamaño se aplica únicamente en el momento del render (dentro de `render_row()`), sobre los datos de entidad ya resueltos por la caché: **no forma parte de la clave de caché** (`build_cache_key()` no cambió de firma), por lo que cambiar el tamaño del logo nunca invalida ni duplica cachés existentes.
+
+## [0.6.0] - 2026-08-05
+
+### Añadido
+
+- Bloque dinámico de Gutenberg `bunny-figure-metadata/features` ("Bunny Figure: Características"), pensado para insertarse en patrones, que reemplaza la dependencia de un plugin externo usado anteriormente para mostrar las características de la figura. Server-side puro: no guarda HTML en `post_content`, solo la configuración del bloque; el marcado se genera en cada render a partir de la metadata actual del post.
+- Panel de configuración completo: mostrar/ocultar encabezado general, elemento HTML del encabezado (H1–H6, p, div, span, strong, em) y clase CSS adicional; por cada uno de los 12 campos de metadata, mostrar/ocultar, prefijo, elemento HTML y clase CSS del prefijo, y elemento HTML y clase CSS del valor.
+- Valor por defecto configurable para metadatos vacíos (por defecto `No dice`, editable a cualquier texto o vacío). Es puramente una representación visual: nunca se guarda en la metadata, nunca se convierte en entidad, y nunca genera ni asocia un TAG. Ya no hay ningún `No dice` hardcodeado en el renderizado.
+- Para Fabricante/Ilustrador/Serie/Personaje, reutiliza la estructura de entidades existente: cada valor separado por `&` se resuelve de forma independiente; si tiene una URL configurada (`BFM_Entity_Info_Map`) se muestra como enlace, si no, como texto plano. El valor `No dice` nunca se trata como entidad. No se muestran logos todavía.
+- `includes/class-bfm-features-block.php` (`BFM_Features_Block`): registra el bloque (script/estilo del editor registrados manualmente, sin build step) y contiene el `render_callback`, reutilizando `BFM_Meta_Fields` y `BFM_Entity_Info_Map` — sin duplicar lógica ni crear un sistema de metadata paralelo.
+- `blocks/features/` (`block.json`, `index.js`, `style.css`): editor en JS plano contra los globals `wp.*` (sin JSX ni build step, consistente con el resto de los scripts del plugin), con vista previa en vivo vía `<ServerSideRender>` que llama al mismo `render_callback` del frontend.
+- Lista blanca de etiquetas HTML permitidas (`h1`–`h6`, `p`, `div`, `span`, `strong`, `em`) para los elementos configurables del bloque, evitando que un atributo pueda inyectar una etiqueta arbitraria.
+
+### Rendimiento
+
+- El bloque no ejecuta JavaScript ni peticiones AJAX en el frontend. Por render: 12 lecturas de post meta (el post ya está cargado en memoria) y como máximo 4 lecturas de `get_option()` (una por campo de entidad presente, cacheadas por WordPress tras la primera lectura), sin importar cuántos valores `&`-separados tenga cada campo. El CSS del bloque solo se carga en las páginas donde el bloque realmente se usa (registro vía `block.json`).
+
+### No incluido en esta versión
+
+Bunny Score, páginas públicas por entidad, SEO/schema markup, integraciones externas, sincronización con X, crawling de URLs, importadores, cron, tablas de base de datos nuevas, REST API pública, funcionalidad de merge de entidades, un identificador de entidad independiente del texto de metadata, logos en el bloque "Características" (frontend), cards, y panel de salud/diagnóstico.
+
 ## [0.5.0] - 2026-08-04
 
 ### Añadido

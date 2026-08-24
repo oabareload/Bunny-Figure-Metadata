@@ -1,0 +1,38 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "bunny-figure-metadata/features",
+	"title": "Bunny Figure: Características",
+	"category": "widgets",
+	"icon": "list-view",
+	"description": "Muestra las características estructuradas de la figura (metadata) de este post: escala, fabricante, serie, personaje, etc. Bloque dinámico, sin HTML guardado en el post.",
+	"keywords": [ "bunny", "figura", "caracteristicas", "metadata" ],
+	"textdomain": "bunny-figure-metadata",
+	"usesContext": [ "postId" ],
+	"attributes": {
+		"showHeading": {
+			"type": "boolean",
+			"default": true
+		},
+		"headingTag": {
+			"type": "string",
+			"default": "h3"
+		},
+		"headingClassName": {
+			"type": "string",
+			"default": ""
+		},
+		"defaultValueText": {
+			"type": "string",
+			"default": "No dice"
+		},
+		"features": {
+			"type": "object",
+			"default": {}
+		}
+	},
+	"supports": {
+		"html": false,
+		"align": false
+	}
+}

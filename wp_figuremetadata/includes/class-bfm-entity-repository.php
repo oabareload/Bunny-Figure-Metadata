@@ -50,7 +50,6 @@ class BFM_Entity_Repository {
 				AND pm.meta_value <> ''
 				AND p.post_type = 'post'
 				AND p.post_status IN ('publish', 'future')",
-				/* AND p.post_status = 'publish'", */
 				$meta_key
 			)
 		);
@@ -158,6 +157,50 @@ class BFM_Entity_Repository {
 		);
 
 		return $values;
+	}
+
+	/**
+	 * Resolve an already-fetched values map into one of the five orders
+	 * offered by the "Entidades destacadas" block: two deterministic
+	 * post-count directions, two deterministic name directions, and a
+	 * random order. The four deterministic cases are pure delegations to
+	 * sort_values() (no duplicated comparison logic); only the random
+	 * case is handled directly here, since sort_values() has no
+	 * equivalent for it.
+	 *
+	 * @param array<string, int> $values   Map of value name => post count.
+	 * @param string              $order_by One of: posts_desc, posts_asc, name_asc, name_desc, random.
+	 * @return array<string, int> Re-ordered map.
+	 */
+	public static function sort_values_for_order( array $values, string $order_by ): array {
+
+		switch ( $order_by ) {
+
+			case 'posts_asc':
+				return self::sort_values( $values, 'posts', 'asc' );
+
+			case 'name_asc':
+				return self::sort_values( $values, 'name', 'asc' );
+
+			case 'name_desc':
+				return self::sort_values( $values, 'name', 'desc' );
+
+			case 'random':
+				$keys = array_keys( $values );
+				shuffle( $keys );
+
+				$shuffled = array();
+
+				foreach ( $keys as $key ) {
+					$shuffled[ $key ] = $values[ $key ];
+				}
+
+				return $shuffled;
+
+			case 'posts_desc':
+			default:
+				return self::sort_values( $values, 'posts', 'desc' );
+		}
 	}
 
 	/**

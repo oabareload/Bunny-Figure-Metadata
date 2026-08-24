@@ -111,6 +111,7 @@ class BFM_Post_Editor {
 				$meta_key,
 				true
 			);
+			$value = '' !== $value ? $value : ( $field['default'] ?? '' );
 
 			$is_tag_source = in_array(
 				$meta_key,
@@ -166,8 +167,10 @@ class BFM_Post_Editor {
 		printf(
 			'<div class="bfm-figure-chip-field" data-meta-key="%1$s">
 				<input type="hidden" id="%1$s" name="%1$s" value="%2$s">
-				<div class="bfm-figure-chip-list"></div>
-				<input type="text" class="bfm-figure-chip-input widefat" placeholder="%3$s" autocomplete="off">
+				<div class="bfm-figure-chip-control">
+					<span class="bfm-figure-chip-list"></span>
+					<input type="text" class="bfm-figure-chip-input" placeholder="%3$s" autocomplete="off">
+				</div>
 			</div>
 			<p class="description">%4$s</p>',
 			esc_attr( $meta_key ),
@@ -353,14 +356,26 @@ class BFM_Post_Editor {
 				position: relative;
 			}
 
-			.bfm-figure-chip-list {
+			.bfm-figure-chip-control {
 				display: flex;
 				flex-wrap: wrap;
+				align-items: center;
 				gap: 6px;
+				width: 100%;
+				box-sizing: border-box;
+				padding: 4px 6px;
+				border: 1px solid #8c8f94;
+				border-radius: 4px;
+				background: #fff;
 			}
 
-			.bfm-figure-chip-list:not(:empty) {
-				margin-bottom: 6px;
+			.bfm-figure-chip-control:focus-within {
+				border-color: #2271b1;
+				box-shadow: 0 0 0 1px #2271b1;
+			}
+
+			.bfm-figure-chip-list {
+				display: contents;
 			}
 
 			.bfm-figure-chip {
@@ -374,6 +389,7 @@ class BFM_Post_Editor {
 				font-weight: 600;
 				padding: 4px 6px 4px 10px;
 				border-radius: 20px;
+				white-space: nowrap;
 			}
 
 			.bfm-figure-chip-remove {
@@ -389,6 +405,16 @@ class BFM_Post_Editor {
 
 			.bfm-figure-chip-remove:hover {
 				opacity: 1;
+			}
+
+			.bfm-figure-chip-input {
+				flex: 1 1 120px;
+				min-width: 120px;
+				border: none;
+				outline: none;
+				box-shadow: none;
+				padding: 2px 4px;
+				margin: 0;
 			}
 
 			.ui-autocomplete {

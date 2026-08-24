@@ -14,6 +14,12 @@
  * exact text is reused; otherwise the typed text is added as a new
  * entity value.
  *
+ * Pending (typed-but-not-yet-chipped) text is committed automatically
+ * on Enter, Tab, blur, and — as a last-resort safety net — right before
+ * the post is actually saved/published, so a value never silently fails
+ * to reach the metadata just because the user didn't explicitly press
+ * Enter.
+ *
  * @package BunnyFigureMetadata
  */
 
@@ -23,6 +29,10 @@
 	if (typeof BFM_POST_EDITOR_CHIPS === 'undefined') {
 		return;
 	}
+
+	// Committers for every chip field on the page, so a page-level "about
+	// to save" safety net can flush all of them at once.
+	var pendingCommitters = [];
 
 	function parseValues(raw) {
 		return String(raw || '')
@@ -104,6 +114,19 @@
 			$input.val('');
 		}
 
+		/**
+		 * Commit whatever text is currently typed (but not yet turned
+		 * into a chip) as a value, if any. Safe to call repeatedly —
+		 * it's a no-op once the input is empty.
+		 */
+		function commitPending() {
+			var raw = $.trim($input.val());
+
+			if (raw) {
+				addValue(raw);
+			}
+		}
+
 		$input.autocomplete({
 			minLength: 1,
 			source: function (request, response) {
@@ -122,7 +145,10 @@
 		});
 
 		$input.on('keydown', function (e) {
-			if ('Enter' !== e.key && 13 !== e.keyCode) {
+			var isEnter = 'Enter' === e.key || 13 === e.keyCode;
+			var isTab = 'Tab' === e.key || 9 === e.keyCode;
+
+			if (!isEnter && !isTab) {
 				return;
 			}
 
@@ -130,19 +156,52 @@
 			var hasActiveSuggestion = instance && instance.menu && instance.menu.active;
 
 			if (hasActiveSuggestion) {
-				// Let jQuery UI's own handling apply the highlighted suggestion.
+				// Let jQuery UI's own handling apply the highlighted
+				// suggestion (both Enter and Tab do this natively); for
+				// Tab, default focus-navigation still proceeds afterward.
 				return;
 			}
 
-			e.preventDefault();
-			addValue($input.val());
+			if (isEnter) {
+				// Prevent a stray form submit / newline; Tab's default
+				// focus-navigation is intentionally left alone so tabbing
+				// through fields keeps working normally.
+				e.preventDefault();
+			}
+
+			commitPending();
 		});
+
+		$input.on('blur', function () {
+			commitPending();
+		});
+
+		pendingCommitters.push(commitPending);
 
 		render();
 	}
 
+	function commitAllPending() {
+		pendingCommitters.forEach(function (commit) { commit(); });
+	}
+
 	$(function () {
 		$('.bfm-figure-chip-field').each(initField);
+
+		// Last-resort safety net: flush any pending text right before the
+		// post is actually saved. #post is the real underlying form for
+		// both the classic editor and the block editor (Gutenberg submits
+		// classic meta boxes like this one through that same form via its
+		// meta-box-compat mechanism), so hooking its submit event covers
+		// both. The button-level mousedown handlers below fire even
+		// earlier, before the editor's own click handling runs.
+		$('#post').on('submit', commitAllPending);
+
+		$(document).on(
+			'mousedown',
+			'#publish, .editor-post-publish-button__button, .editor-post-save-draft, .editor-post-publish-panel__toggle',
+			commitAllPending
+		);
 	});
 
 })(jQuery);

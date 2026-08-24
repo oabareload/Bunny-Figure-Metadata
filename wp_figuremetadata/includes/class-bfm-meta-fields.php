@@ -17,6 +17,30 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class BFM_Meta_Fields {
 
+	const OPTION_NAME = 'bfm_metadata_fields';
+
+	/**
+	 * Ensure the global configuration exists without changing stored post meta.
+	 *
+	 * @return void
+	 */
+	public static function maybe_migrate(): void {
+		if ( false !== get_option( self::OPTION_NAME, false ) ) {
+			return;
+		}
+
+		$fields = array();
+		foreach ( self::legacy_fields() as $meta_key => $field ) {
+			$fields[ $meta_key ] = array(
+				'label'   => $field['label'],
+				'default' => '',
+				'entity'  => in_array( $meta_key, self::legacy_entity_keys(), true ),
+			);
+		}
+
+		add_option( self::OPTION_NAME, $fields, '', false );
+	}
+
 	/**
 	 * All structured figure meta fields.
 	 *
@@ -26,6 +50,18 @@ class BFM_Meta_Fields {
 	 * @return array<string, array<string, string>>
 	 */
 	public static function all(): array {
+		self::maybe_migrate();
+
+		$configured = get_option( self::OPTION_NAME, array() );
+		return is_array( $configured ) ? self::normalize( $configured ) : array();
+	}
+
+	/**
+	 * Original field definitions used to seed the global configuration.
+	 *
+	 * @return array<string, array{label:string}>
+	 */
+	private static function legacy_fields(): array {
 		return array(
 			'_bunny_figure_scale' => array(
 				'label' => '📐 Escala',
@@ -66,6 +102,36 @@ class BFM_Meta_Fields {
 		);
 	}
 
+	/** @return array<int, string> */
+	private static function legacy_entity_keys(): array {
+		return array(
+			'_bunny_figure_manufacturer',
+			'_bunny_figure_illustrator',
+			'_bunny_figure_series',
+			'_bunny_figure_character',
+		);
+	}
+
+	/**
+	 * @param array<mixed, mixed> $fields Raw option value.
+	 * @return array<string, array{label:string,default:string,entity:bool}>
+	 */
+	private static function normalize( array $fields ): array {
+		$normalized = array();
+		foreach ( $fields as $meta_key => $field ) {
+			$meta_key = sanitize_key( (string) $meta_key );
+			if ( '' === $meta_key || ! is_array( $field ) ) {
+				continue;
+			}
+			$normalized[ $meta_key ] = array(
+				'label'   => isset( $field['label'] ) ? sanitize_text_field( $field['label'] ) : $meta_key,
+				'default' => isset( $field['default'] ) ? sanitize_text_field( $field['default'] ) : '',
+				'entity'  => ! empty( $field['entity'] ),
+			);
+		}
+		return $normalized;
+	}
+
 	/**
 	 * Meta fields whose values are synchronized to post tags.
 	 *
@@ -74,12 +140,9 @@ class BFM_Meta_Fields {
 	 * @return array<int, string>
 	 */
 	public static function tag_sources(): array {
-		return array(
-			'_bunny_figure_manufacturer',
-			'_bunny_figure_illustrator',
-			'_bunny_figure_series',
-			'_bunny_figure_character',
-		);
+		return array_keys( array_filter( self::all(), static function ( $field ) {
+			return ! empty( $field['entity'] );
+		} ) );
 	}
 
 	/**
@@ -91,24 +154,24 @@ class BFM_Meta_Fields {
 	 * @return array<string, array<string, string>>
 	 */
 	public static function entities(): array {
-		return array(
-			'manufacturers' => array(
-				'label'    => __( 'Fabricantes', 'bunny-figure-metadata' ),
-				'meta_key' => '_bunny_figure_manufacturer',
-			),
-			'illustrators' => array(
-				'label'    => __( 'Ilustradores', 'bunny-figure-metadata' ),
-				'meta_key' => '_bunny_figure_illustrator',
-			),
-			'series' => array(
-				'label'    => __( 'Series', 'bunny-figure-metadata' ),
-				'meta_key' => '_bunny_figure_series',
-			),
-			'characters' => array(
-				'label'    => __( 'Personajes', 'bunny-figure-metadata' ),
-				'meta_key' => '_bunny_figure_character',
-			),
+		$legacy_slugs = array(
+			'_bunny_figure_manufacturer' => 'manufacturers',
+			'_bunny_figure_illustrator'  => 'illustrators',
+			'_bunny_figure_series'       => 'series',
+			'_bunny_figure_character'    => 'characters',
 		);
+		$entities = array();
+		foreach ( self::all() as $meta_key => $field ) {
+			if ( empty( $field['entity'] ) ) {
+				continue;
+			}
+			$slug = $legacy_slugs[ $meta_key ] ?? sanitize_title( preg_replace( '/^_bunny_figure_/', '', $meta_key ) );
+			$entities[ $slug ] = array(
+				'label'    => $field['label'],
+				'meta_key' => $meta_key,
+			);
+		}
+		return $entities;
 	}
 
 	/**

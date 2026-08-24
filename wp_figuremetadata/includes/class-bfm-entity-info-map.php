@@ -86,6 +86,52 @@ class BFM_Entity_Info_Map {
 	}
 
 	/**
+	 * Batch-resolve Media Library thumbnail URLs for a list of attachment
+	 * IDs. There is no core "get many attachments' image src" API, so a
+	 * single get_posts() call primes WordPress's own post/meta object
+	 * cache for every attachment ID involved; the subsequent
+	 * wp_get_attachment_image_src() calls then hit that cache instead of
+	 * issuing one query per attachment. Shared by the admin entity list
+	 * screens and the "Entidades destacadas" block, so this batching
+	 * exists in exactly one place.
+	 *
+	 * @param array<int, int> $image_ids Media Library attachment IDs.
+	 * @param string           $size      Registered image size to resolve.
+	 * @return array<int, string> Map of image_id => thumbnail URL (only for IDs that resolved).
+	 */
+	public static function get_logo_urls( array $image_ids, string $size = 'thumbnail' ): array {
+
+		$image_ids = array_values( array_unique( array_filter( array_map( 'absint', $image_ids ) ) ) );
+
+		if ( empty( $image_ids ) ) {
+			return array();
+		}
+
+		get_posts(
+			array(
+				'post_type'      => 'attachment',
+				'post_status'    => 'inherit',
+				'post__in'       => $image_ids,
+				'posts_per_page' => count( $image_ids ),
+				'orderby'        => 'post__in',
+			)
+		);
+
+		$urls = array();
+
+		foreach ( $image_ids as $image_id ) {
+
+			$src = wp_get_attachment_image_src( $image_id, $size );
+
+			if ( $src ) {
+				$urls[ $image_id ] = $src[0];
+			}
+		}
+
+		return $urls;
+	}
+
+	/**
 	 * Set (or clear, with an empty string) the URL for an entity value.
 	 *
 	 * @param string $meta_key Source meta key.

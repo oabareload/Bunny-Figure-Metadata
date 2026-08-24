@@ -1,0 +1,57 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "bunny-figure-metadata/featured-entities",
+	"title": "Bunny Figure: Entidades destacadas",
+	"category": "widgets",
+	"icon": "star-filled",
+	"description": "Lista compacta con el ranking de valores más destacados de una entidad (Fabricante, Ilustrador, Serie o Personaje), pensada para el área de widgets del footer. Bloque dinámico con caché, sin HTML guardado en el post.",
+	"keywords": [ "bunny", "entidades", "destacadas", "ranking", "fabricantes" ],
+	"textdomain": "bunny-figure-metadata",
+	"attributes": {
+		"metaKey": {
+			"type": "string",
+			"default": "_bunny_figure_manufacturer"
+		},
+		"count": {
+			"type": "number",
+			"default": 5
+		},
+		"orderBy": {
+			"type": "string",
+			"default": "posts_desc"
+		},
+		"showLogo": {
+			"type": "boolean",
+			"default": true
+		},
+		"logoSize": {
+			"type": "number",
+			"default": 24
+		},
+		"showCount": {
+			"type": "boolean",
+			"default": true
+		},
+		"linkToTag": {
+			"type": "boolean",
+			"default": true
+		},
+		"title": {
+			"type": "string",
+			"default": ""
+		},
+		"titleTag": {
+			"type": "string",
+			"default": "h2"
+		},
+		"titleClassName": {
+			"type": "string",
+			"default": ""
+		}
+	},
+	"supports": {
+		"html": false,
+		"align": false
+	}
+}

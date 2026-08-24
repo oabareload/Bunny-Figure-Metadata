@@ -1,0 +1,38 @@
+/**
+ * Bunny Figure Metadata — "Características" block
+ *
+ * Minimal, self-contained styling for the frontend output (and the
+ * editor preview, which renders the same markup via ServerSideRender).
+ * Intentionally lightweight: this loads on the frontend only on pages
+ * where the block is actually used.
+ *
+ * @package BunnyFigureMetadata
+ */
+
+.bfm-features-block {
+	font-size: 15px;
+	line-height: 1.6;
+}
+
+.bfm-features-heading {
+	margin: 0 0 10px;
+}
+
+.bfm-features-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.bfm-feature {
+	margin: 0;
+}
+
+.bfm-feature-prefix {
+	font-weight: 600;
+	margin-right: 4px;
+}
+
+.bfm-feature-value a {
+	text-decoration: underline;
+}

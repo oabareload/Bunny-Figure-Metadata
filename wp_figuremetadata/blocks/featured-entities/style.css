@@ -1,0 +1,62 @@
+/**
+ * Bunny Figure Metadata — "Entidades destacadas" block
+ *
+ * Compact list styling, intentionally not cards/collage, designed to
+ * work well inside a footer widget column. Intentionally lightweight:
+ * this loads on the frontend only on pages where the block is actually
+ * used (registered via block.json's "style").
+ *
+ * @package BunnyFigureMetadata
+ */
+
+.bfm-featured-entities-block {
+	font-size: 14px;
+	line-height: 1.5;
+}
+
+.bfm-featured-entities-title {
+	margin: 0 0 8px;
+}
+
+.bfm-featured-entities-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.bfm-featured-entity {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin: 0 0 4px;
+}
+
+.bfm-featured-entity-logo {
+	/* Actual width/height/px come from an inline style set by the PHP
+	   renderer per the block's configured "logoSize" attribute — this
+	   rule only covers what stays constant across sizes: never stretch
+	   the source image, keep proportions, and never let the flex row
+	   shrink it. Vertical alignment with the text comes from
+	   align-items: center on .bfm-featured-entity, regardless of size. */
+	object-fit: contain;
+	border-radius: 2px;
+	flex-shrink: 0;
+}
+
+.bfm-featured-entity-name {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+a.bfm-featured-entity-name {
+	text-decoration: underline;
+}
+
+.bfm-featured-entity-count {
+	margin-left: auto;
+	padding-left: 8px;
+	opacity: 0.7;
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}

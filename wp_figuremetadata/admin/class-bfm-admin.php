@@ -28,6 +28,7 @@ class BFM_Admin {
 	 * Page slug of the top-level menu entry (first entity: manufacturers).
 	 */
 	const MENU_SLUG = self::PAGE_PREFIX . 'manufacturers';
+	const SETTINGS_SLUG = self::PAGE_PREFIX . 'settings';
 
 	/**
 	 * Build the admin page slug for a given entity slug.
@@ -47,6 +48,19 @@ class BFM_Admin {
 	public function register_menu(): void {
 
 		$entities = BFM_Meta_Fields::entities();
+
+		if ( empty( $entities ) ) {
+			add_menu_page(
+				__( 'Bunny Figure Metadata', 'bunny-figure-metadata' ),
+				__( 'Figure Metadata', 'bunny-figure-metadata' ),
+				'manage_options',
+				self::SETTINGS_SLUG,
+				array( $this, 'render_settings_page' ),
+				'dashicons-tag',
+				57
+			);
+			return;
+		}
 
 		$first_slug = array_key_first( $entities );
 
@@ -91,6 +105,105 @@ class BFM_Admin {
 				$callbacks[ $slug ]
 			);
 		}
+
+		add_submenu_page(
+			self::page_slug( $first_slug ),
+			__( 'Settings', 'bunny-figure-metadata' ),
+			__( 'Settings', 'bunny-figure-metadata' ),
+			'manage_options',
+			self::SETTINGS_SLUG,
+			array( $this, 'render_settings_page' )
+		);
+	}
+
+	/** Register the global metadata option. */
+	public function register_settings(): void {
+		register_setting(
+			'bfm_metadata_settings',
+			BFM_Meta_Fields::OPTION_NAME,
+			array(
+				'sanitize_callback' => array( $this, 'sanitize_metadata_settings' ),
+				'default'           => array(),
+			)
+		);
+	}
+
+	/**
+	 * Sanitize metadata rows submitted by the settings screen.
+	 *
+	 * @param mixed $raw_settings Submitted option value.
+	 * @return array<string, array{label:string,default:string,entity:bool}>
+	 */
+	public function sanitize_metadata_settings( $raw_settings ): array {
+		$rows  = is_array( $raw_settings ) ? $raw_settings : array();
+		$clean = array();
+
+		foreach ( $rows as $row ) {
+			if ( ! is_array( $row ) ) {
+				continue;
+			}
+
+			$meta_key = sanitize_key( $row['meta_key'] ?? '' );
+			$label    = sanitize_text_field( $row['label'] ?? '' );
+
+			if ( '' === $meta_key || '' === $label || isset( $clean[ $meta_key ] ) ) {
+				continue;
+			}
+
+			$clean[ $meta_key ] = array(
+				'label'   => $label,
+				'default' => sanitize_text_field( $row['default'] ?? '' ),
+				'entity'  => ! empty( $row['entity'] ),
+			);
+		}
+
+		return $clean;
+	}
+
+	/** Render the global metadata settings screen. */
+	public function render_settings_page(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to view this page.', 'bunny-figure-metadata' ) );
+		}
+
+		$fields = BFM_Meta_Fields::all();
+		$rows   = array_values( $fields );
+		foreach ( array_keys( $fields ) as $index => $meta_key ) {
+			$rows[ $index ]['meta_key'] = $meta_key;
+		}
+		$rows = array_merge( $rows, array_fill( 0, 3, array( 'meta_key' => '', 'label' => '', 'default' => '', 'entity' => false ) ) );
+		?>
+		<div class="wrap">
+			<h1><?php esc_html_e( 'Metadata Settings', 'bunny-figure-metadata' ); ?></h1>
+			<p><?php esc_html_e( 'Define los campos disponibles en el editor y cuáles funcionan como catálogos de entidades.', 'bunny-figure-metadata' ); ?></p>
+			<form method="post" action="options.php">
+				<?php settings_fields( 'bfm_metadata_settings' ); ?>
+				<table class="widefat striped">
+					<thead><tr>
+						<th><?php esc_html_e( 'Meta key', 'bunny-figure-metadata' ); ?></th>
+						<th><?php esc_html_e( 'Nombre', 'bunny-figure-metadata' ); ?></th>
+						<th><?php esc_html_e( 'Valor por defecto', 'bunny-figure-metadata' ); ?></th>
+						<th><?php esc_html_e( 'Catálogo / entidad', 'bunny-figure-metadata' ); ?></th>
+					</tr></thead>
+					<tbody>
+					<?php foreach ( $rows as $index => $field ) : ?>
+						<tr>
+							<td><input type="text" class="regular-text" name="<?php echo esc_attr( self::settings_input_name( $index, 'meta_key' ) ); ?>" value="<?php echo esc_attr( $field['meta_key'] ); ?>"></td>
+							<td><input type="text" class="regular-text" name="<?php echo esc_attr( self::settings_input_name( $index, 'label' ) ); ?>" value="<?php echo esc_attr( $field['label'] ); ?>"></td>
+							<td><input type="text" class="regular-text" name="<?php echo esc_attr( self::settings_input_name( $index, 'default' ) ); ?>" value="<?php echo esc_attr( $field['default'] ); ?>"></td>
+							<td><label><input type="checkbox" name="<?php echo esc_attr( self::settings_input_name( $index, 'entity' ) ); ?>" value="1" <?php checked( $field['entity'] ); ?>> <?php esc_html_e( 'Usar entidad', 'bunny-figure-metadata' ); ?></label></td>
+						</tr>
+					<?php endforeach; ?>
+					</tbody>
+				</table>
+				<?php submit_button(); ?>
+			</form>
+		</div>
+		<?php
+	}
+
+	private static function settings_input_name( int $index, string $key ): string {
+		return BFM_Meta_Fields::OPTION_NAME . '[' . $index . '][' . $key . ']';
 	}
 
 	/**
@@ -160,7 +273,7 @@ class BFM_Admin {
 		$view_file = BFM_PATH . 'admin/views/' . $slug . '.php';
 
 		if ( ! file_exists( $view_file ) ) {
-			wp_die( esc_html__( 'View not found.', 'bunny-figure-metadata' ) );
+			$view_file = BFM_PATH . 'admin/views/partial-entity-list.php';
 		}
 
 		require $view_file;
@@ -295,14 +408,9 @@ class BFM_Admin {
 
 	/**
 	 * Resolve complementary info (URL + logo) for every value under a
-	 * meta key, and batch-resolve logo thumbnail URLs.
-	 *
-	 * The Media Library thumbnails cannot be fetched with a single query
-	 * the way get_terms() can for tags (there is no core "get many
-	 * attachments' image src" API), so instead a single get_posts() call
-	 * primes WordPress's own post/meta object cache for every attachment
-	 * ID involved; the subsequent wp_get_attachment_image_src() calls
-	 * then hit that cache instead of issuing new queries.
+	 * meta key. The batch logo-thumbnail resolution itself lives in
+	 * BFM_Entity_Info_Map::get_logo_urls() (shared with the "Entidades
+	 * destacadas" block), so it is not duplicated here.
 	 *
 	 * @param string $meta_key Source meta key.
 	 * @return array{0: array<string,array{url:string,image_id:int}>, 1: array<int,string>} [ value => info, image_id => thumbnail_url ]
@@ -311,41 +419,14 @@ class BFM_Admin {
 
 		$info_map = BFM_Entity_Info_Map::get_for_meta_key( $meta_key );
 
-		$image_ids = array_values(
-			array_unique(
-				array_filter(
-					array_map(
-						static function ( $entry ) {
-							return absint( $entry['image_id'] ?? 0 );
-						},
-						$info_map
-					)
-				)
-			)
+		$image_ids = array_map(
+			static function ( $entry ) {
+				return absint( $entry['image_id'] ?? 0 );
+			},
+			$info_map
 		);
 
-		$logo_previews = array();
-
-		if ( ! empty( $image_ids ) ) {
-
-			// Prime the post/meta cache for all involved attachments in one query.
-			get_posts(
-				array(
-					'post_type'      => 'attachment',
-					'post_status'    => 'inherit',
-					'post__in'       => $image_ids,
-					'posts_per_page' => count( $image_ids ),
-					'orderby'        => 'post__in',
-				)
-			);
-
-			foreach ( $image_ids as $image_id ) {
-				$thumbnail = wp_get_attachment_image_src( $image_id, 'thumbnail' );
-				if ( $thumbnail ) {
-					$logo_previews[ $image_id ] = $thumbnail[0];
-				}
-			}
-		}
+		$logo_previews = BFM_Entity_Info_Map::get_logo_urls( $image_ids );
 
 		return array( $info_map, $logo_previews );
 	}

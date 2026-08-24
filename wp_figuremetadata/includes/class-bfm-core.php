@@ -74,6 +74,8 @@ class BFM_Core {
 		require_once BFM_PATH . 'includes/class-bfm-entity-repository.php';
 		require_once BFM_PATH . 'includes/class-bfm-entity-tag-map.php';
 		require_once BFM_PATH . 'includes/class-bfm-entity-info-map.php';
+		require_once BFM_PATH . 'includes/class-bfm-features-block.php';
+		require_once BFM_PATH . 'includes/class-bfm-featured-entities-block.php';
 
 		// Admin (and its AJAX endpoints) is only needed in wp-admin, to avoid
 		// loading it on the front end. is_admin() is also true during
@@ -95,6 +97,7 @@ class BFM_Core {
 	 * @return void
 	 */
 	private function register_hooks(): void {
+		add_action( 'init', array( 'BFM_Meta_Fields', 'maybe_migrate' ), 1 );
 
 		// ── Post editor metadata (metabox, register_post_meta, save) ──────────
 		if ( class_exists( 'BFM_Post_Editor' ) ) {
@@ -108,10 +111,23 @@ class BFM_Core {
 			$tag_sync->register_hooks();
 		}
 
+		// ── "Características" Gutenberg block (dynamic, front + editor) ────────
+		if ( class_exists( 'BFM_Features_Block' ) ) {
+			$features_block = new BFM_Features_Block();
+			$features_block->register_hooks();
+		}
+
+		// ── "Entidades destacadas" Gutenberg block (dynamic, cached ranking) ───
+		if ( class_exists( 'BFM_Featured_Entities_Block' ) ) {
+			$featured_entities_block = new BFM_Featured_Entities_Block();
+			$featured_entities_block->register_hooks();
+		}
+
 		// ── Admin ─────────────────────────────────────────────────────────────
 		if ( is_admin() && class_exists( 'BFM_Admin' ) ) {
 			$admin = new BFM_Admin();
 			add_action( 'admin_menu', [ $admin, 'register_menu' ] );
+			add_action( 'admin_init', [ $admin, 'register_settings' ] );
 			add_action( 'admin_enqueue_scripts', [ $admin, 'enqueue_assets' ] );
 		}
 
@@ -141,8 +157,8 @@ class BFM_Core {
 	public function plugin_action_links( array $links ): array {
 		$settings_link = sprintf(
 			'<a href="%s">%s</a>',
-			esc_url( admin_url( 'admin.php?page=' . BFM_Admin::MENU_SLUG ) ),
-			esc_html__( 'Fabricantes', 'bunny-figure-metadata' )
+			esc_url( admin_url( 'admin.php?page=' . BFM_Admin::SETTINGS_SLUG ) ),
+			esc_html__( 'Settings', 'bunny-figure-metadata' )
 		);
 
 		array_unshift( $links, $settings_link );
