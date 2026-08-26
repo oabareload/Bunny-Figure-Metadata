@@ -21,14 +21,6 @@
 		"headingClassName": {
 			"type": "string",
 			"default": ""
-		},
-		"defaultValueText": {
-			"type": "string",
-			"default": "No dice"
-		},
-		"features": {
-			"type": "object",
-			"default": {}
 		}
 	},
 	"supports": {

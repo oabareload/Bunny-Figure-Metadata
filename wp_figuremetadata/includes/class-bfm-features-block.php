@@ -29,6 +29,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class BFM_Features_Block {
 
+	const OPTION_NAME = 'bfm_features_settings';
+
 	/**
 	 * Fully qualified block name.
 	 */
@@ -81,14 +83,6 @@ class BFM_Features_Block {
 			true
 		);
 
-		wp_localize_script(
-			'bfm-features-block-editor',
-			'BFM_FEATURES_BLOCK',
-			array(
-				'fields' => $this->field_definitions_for_js(),
-			)
-		);
-
 		wp_register_style(
 			'bfm-features-block-style',
 			BFM_URL . 'blocks/features/style.css',
@@ -106,25 +100,64 @@ class BFM_Features_Block {
 		);
 	}
 
+	/** @return array<int, string> */
+	public static function fixed_field_keys(): array {
+		return array(
+			'_bunny_figure_scale', '_bunny_figure_height', '_bunny_figure_price',
+			'_bunny_figure_release_date', '_bunny_figure_material', '_bunny_figure_manufacturer',
+			'_bunny_figure_sculptor', '_bunny_figure_paintwork', '_bunny_figure_illustrator',
+			'_bunny_figure_series', '_bunny_figure_character', '_bunny_figure_version',
+		);
+	}
+
 	/**
-	 * Build the { metaKey, label } list the editor script uses to render
-	 * one Inspector panel per field, sourced from BFM_Meta_Fields (the
-	 * single source of truth already used across the plugin).
+	 * Default global settings for all features fields.
 	 *
-	 * @return array<int, array{metaKey: string, label: string}>
+	 * @return array<string, array{show:bool,prefix:string,prefixTag:string,prefixClass:string,valueTag:string,valueClass:string,link_target:string,order:int}>
 	 */
-	private function field_definitions_for_js(): array {
+	public static function default_global_settings(): array {
+		$settings = array();
+		foreach ( self::fixed_field_keys() as $index => $meta_key ) {
+			$settings[ $meta_key ] = array(
+				'show'        => true,
+				'prefix'      => ( BFM_Meta_Fields::all()[ $meta_key ]['label'] ?? $meta_key ) . ':',
+				'prefixTag'   => 'span',
+				'prefixClass' => '',
+				'valueTag'    => 'span',
+				'valueClass'  => '',
+				'link_target' => 'tag',
+				'order'       => $index + 1,
+			);
+		}
+		return $settings;
+	}
 
-		$fields = array();
+	/**
+	 * Get the current global configuration for the block.
+	 *
+	 * @return array<string, array{show:bool,prefix:string,prefixTag:string,prefixClass:string,valueTag:string,valueClass:string,link_target:string,order:int}>
+	 */
+	public static function global_field_settings(): array {
+		$config = get_option( self::OPTION_NAME, self::default_global_settings() );
+		$defaults = self::default_global_settings();
+		$clean = array();
 
-		foreach ( BFM_Meta_Fields::all() as $meta_key => $field ) {
-			$fields[] = array(
-				'metaKey' => $meta_key,
-				'label'   => $field['label'],
+		foreach ( self::fixed_field_keys() as $meta_key ) {
+			$raw = is_array( $config[ $meta_key ] ?? null ) ? $config[ $meta_key ] : array();
+			$base = $defaults[ $meta_key ];
+			$clean[ $meta_key ] = array(
+				'show'        => ! empty( $raw['show'] ) || ! array_key_exists( 'show', $raw ),
+				'prefix'      => isset( $raw['prefix'] ) && '' !== trim( (string) $raw['prefix'] ) ? (string) $raw['prefix'] : $base['prefix'],
+				'prefixTag'   => self::sanitize_html_tag( $raw['prefixTag'] ?? $base['prefixTag'] ),
+				'prefixClass' => isset( $raw['prefixClass'] ) ? sanitize_html_class( (string) $raw['prefixClass'] ) : $base['prefixClass'],
+				'valueTag'    => self::sanitize_html_tag( $raw['valueTag'] ?? $base['valueTag'] ),
+				'valueClass'  => isset( $raw['valueClass'] ) ? sanitize_html_class( (string) $raw['valueClass'] ) : $base['valueClass'],
+				'link_target' => in_array( $raw['link_target'] ?? $base['link_target'], array( 'tag', 'external' ), true ) ? (string) ( $raw['link_target'] ?? $base['link_target'] ) : 'tag',
+				'order'       => max( 1, absint( $raw['order'] ?? $base['order'] ) ),
 			);
 		}
 
-		return $fields;
+		return $clean;
 	}
 
 	/**
@@ -149,30 +182,68 @@ class BFM_Features_Block {
 		$heading_tag   = $this->sanitize_html_tag( $attributes['headingTag'] ?? 'h3' );
 		$heading_class = isset( $attributes['headingClassName'] ) ? sanitize_html_class( (string) $attributes['headingClassName'] ) : '';
 
-		// A visual-only placeholder for empty fields. Never persisted,
-		// never treated as metadata, never turned into an entity or TAG.
-		$default_value_text = isset( $attributes['defaultValueText'] ) ? (string) $attributes['defaultValueText'] : __( 'No dice', 'bunny-figure-metadata' );
-
-		$field_overrides = is_array( $attributes['features'] ?? null ) ? $attributes['features'] : array();
-
-		$entity_meta_keys = BFM_Meta_Fields::tag_sources();
+		$global_settings = self::global_field_settings();
+		$entity_meta_keys = BFM_Meta_Fields::entity_sources();
 		$separator        = BFM_Meta_Fields::value_separator();
 		$excluded_value   = BFM_Meta_Fields::excluded_value();
 
-		// Batch-load URL info once per entity meta key present on this
-		// block (at most 4 calls total, each a single cached get_option()
-		// read via BFM_Entity_Info_Map) — never one lookup per value.
 		$info_by_meta_key = array();
+		$tag_links_by_meta_key = array();
 
 		foreach ( $entity_meta_keys as $meta_key ) {
-			$info_by_meta_key[ $meta_key ] = BFM_Entity_Info_Map::get_for_meta_key( $meta_key );
+			if ( BFM_Meta_Fields::has_capability( $meta_key, 'url' ) ) {
+				$info_by_meta_key[ $meta_key ] = BFM_Entity_Info_Map::get_for_meta_key( $meta_key );
+			}
+
+			if ( BFM_Meta_Fields::has_capability( $meta_key, 'tag' ) ) {
+				$tag_map = BFM_Entity_Tag_Map::get_for_meta_key( $meta_key );
+				$term_ids = array_values( array_unique( array_filter( array_map( 'absint', $tag_map ) ) ) );
+				$tag_links_by_meta_key[ $meta_key ] = array();
+
+				if ( ! empty( $term_ids ) ) {
+					$terms = get_terms(
+						array(
+							'taxonomy'   => 'post_tag',
+							'include'    => $term_ids,
+							'hide_empty' => false,
+						)
+					);
+
+					if ( ! is_wp_error( $terms ) ) {
+						$terms_by_id = array();
+						foreach ( $terms as $term ) {
+							$terms_by_id[ $term->term_id ] = $term;
+						}
+
+						foreach ( $tag_map as $value => $term_id ) {
+							$term_id = absint( $term_id );
+							if ( $term_id > 0 && isset( $terms_by_id[ $term_id ] ) ) {
+								$link = get_term_link( $terms_by_id[ $term_id ] );
+								if ( ! is_wp_error( $link ) ) {
+									$tag_links_by_meta_key[ $meta_key ][ $value ] = $link;
+								}
+							}
+						}
+					}
+				}
+			}
 		}
 
 		$rows = array();
+		$visible_settings = array();
 
-		foreach ( BFM_Meta_Fields::all() as $meta_key => $field ) {
+		$all_fields = BFM_Meta_Fields::all();
+		foreach ( self::fixed_field_keys() as $meta_key ) {
+			$field = $all_fields[ $meta_key ] ?? array( 'label' => $meta_key );
+			$settings = $this->effective_field_settings( $meta_key, $field, $global_settings );
+			$visible_settings[ $meta_key ] = $settings;
+		}
+		uasort( $visible_settings, static function ( $a, $b ) {
+			return ( $a['order'] ?? 1 ) <=> ( $b['order'] ?? 1 );
+		} );
 
-			$settings = $this->effective_field_settings( $meta_key, $field, $field_overrides );
+		foreach ( $visible_settings as $meta_key => $settings ) {
+			$field = $all_fields[ $meta_key ] ?? array( 'label' => $meta_key, 'default' => '' );
 
 			if ( ! $settings['show'] ) {
 				continue;
@@ -181,13 +252,16 @@ class BFM_Features_Block {
 			$raw_value = trim( (string) get_post_meta( $post_id, $meta_key, true ) );
 
 			if ( '' === $raw_value ) {
-				$value_html = '' === $default_value_text ? '' : esc_html( $default_value_text );
+				$default_value = isset( $field['default'] ) ? (string) $field['default'] : '';
+				$value_html    = '' === $default_value ? '' : esc_html( $default_value );
 			} elseif ( in_array( $meta_key, $entity_meta_keys, true ) ) {
 				$value_html = $this->render_entity_value(
 					$raw_value,
 					$separator,
 					$excluded_value,
-					$info_by_meta_key[ $meta_key ]
+					$info_by_meta_key[ $meta_key ] ?? array(),
+					$tag_links_by_meta_key[ $meta_key ] ?? array(),
+					$settings['link_target'] ?? 'tag'
 				);
 			} else {
 				$value_html = esc_html( $raw_value );
@@ -224,28 +298,25 @@ class BFM_Features_Block {
 	}
 
 	/**
-	 * Resolve the effective (already-defaulted) display settings for one
-	 * field, merging the block's per-field overrides (if any) with
-	 * sensible defaults derived from BFM_Meta_Fields.
+	 * Resolve the effective settings for a field from the global configuration.
 	 *
 	 * @param string               $meta_key  Meta key.
 	 * @param array<string,string> $field     Field definition (label).
-	 * @param array<string,mixed>  $overrides Block's `features` attribute.
-	 * @return array{show:bool,prefix:string,prefixTag:string,prefixClass:string,valueTag:string,valueClass:string}
+	 * @param array<string,mixed>  $settings  Global feature settings.
+	 * @return array{show:bool,prefix:string,prefixTag:string,prefixClass:string,valueTag:string,valueClass:string,link_target:string,order:int}
 	 */
-	private function effective_field_settings( string $meta_key, array $field, array $overrides ): array {
-
-		$field_overrides = is_array( $overrides[ $meta_key ] ?? null ) ? $overrides[ $meta_key ] : array();
+	private function effective_field_settings( string $meta_key, array $field, array $settings ): array {
+		$config = is_array( $settings[ $meta_key ] ?? null ) ? $settings[ $meta_key ] : self::default_global_settings()[ $meta_key ];
 
 		return array(
-			'show'        => ! isset( $field_overrides['show'] ) || (bool) $field_overrides['show'],
-			'prefix'      => isset( $field_overrides['prefix'] ) && '' !== $field_overrides['prefix']
-				? (string) $field_overrides['prefix']
-				: $field['label'] . ':',
-			'prefixTag'   => $this->sanitize_html_tag( $field_overrides['prefixTag'] ?? 'span' ),
-			'prefixClass' => isset( $field_overrides['prefixClass'] ) ? sanitize_html_class( (string) $field_overrides['prefixClass'] ) : '',
-			'valueTag'    => $this->sanitize_html_tag( $field_overrides['valueTag'] ?? 'span' ),
-			'valueClass'  => isset( $field_overrides['valueClass'] ) ? sanitize_html_class( (string) $field_overrides['valueClass'] ) : '',
+			'show'        => ! empty( $config['show'] ),
+			'prefix'      => isset( $config['prefix'] ) && '' !== trim( (string) $config['prefix'] ) ? (string) $config['prefix'] : $field['label'] . ':',
+			'prefixTag'   => self::sanitize_html_tag( $config['prefixTag'] ?? 'span' ),
+			'prefixClass' => isset( $config['prefixClass'] ) ? sanitize_html_class( (string) $config['prefixClass'] ) : '',
+			'valueTag'    => self::sanitize_html_tag( $config['valueTag'] ?? 'span' ),
+			'valueClass'  => isset( $config['valueClass'] ) ? sanitize_html_class( (string) $config['valueClass'] ) : '',
+			'link_target' => in_array( $config['link_target'] ?? 'tag', array( 'tag', 'external' ), true ) ? (string) ( $config['link_target'] ?? 'tag' ) : 'tag',
+			'order'       => max( 1, absint( $config['order'] ?? 1 ) ),
 		);
 	}
 
@@ -289,7 +360,7 @@ class BFM_Features_Block {
 	 * @param array<string,array>  $info_map       value name => [ url, image_id ], from BFM_Entity_Info_Map.
 	 * @return string
 	 */
-	private function render_entity_value( string $raw_value, string $separator, string $excluded_value, array $info_map ): string {
+	private function render_entity_value( string $raw_value, string $separator, string $excluded_value, array $info_map, array $tag_links, string $link_target = 'tag' ): string {
 
 		$parts = array_filter(
 			array_map( 'trim', explode( $separator, $raw_value ) ),
@@ -307,12 +378,27 @@ class BFM_Features_Block {
 				continue;
 			}
 
-			$url = isset( $info_map[ $part ]['url'] ) ? (string) $info_map[ $part ]['url'] : '';
+			$external_url = isset( $info_map[ $part ]['url'] ) ? (string) $info_map[ $part ]['url'] : '';
+			$tag_url      = isset( $tag_links[ $part ] ) ? (string) $tag_links[ $part ] : '';
+			$link_url     = '';
 
-			if ( '' !== $url ) {
+			if ( 'external' === $link_target && '' !== $external_url ) {
+				$link_url = $external_url;
+			} elseif ( 'tag' === $link_target && '' !== $tag_url ) {
+				$link_url = $tag_url;
+			} elseif ( 'external' === $link_target && '' === $external_url && '' !== $tag_url ) {
+				$link_url = $tag_url;
+			}
+
+			if ( '' !== $link_url ) {
+				$is_external = 'external' === $link_target && '' !== $external_url;
+				$link_markup = $is_external
+					? '<a class="bfm-feature-link" href="%1$s" target="_blank" rel="noopener noreferrer"><span>%2$s</span><span class="bfm-feature-link-external-icon" aria-hidden="true">↗</span></a>'
+					: '<a class="bfm-feature-link" href="%1$s">%2$s</a>';
+
 				$rendered[] = sprintf(
-					'<a href="%s">%s</a>',
-					esc_url( $url ),
+					$link_markup,
+					esc_url( $link_url ),
 					esc_html( $part )
 				);
 			} else {
@@ -329,7 +415,7 @@ class BFM_Features_Block {
 	 * @param mixed $tag Requested tag.
 	 * @return string
 	 */
-	private function sanitize_html_tag( $tag ): string {
+	public static function sanitize_html_tag( $tag ): string {
 
 		$tag = strtolower( (string) $tag );
 

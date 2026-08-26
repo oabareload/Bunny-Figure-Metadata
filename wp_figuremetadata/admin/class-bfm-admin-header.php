@@ -43,6 +43,18 @@ class BFM_Admin_Header {
 						<?php echo esc_html( $entity['label'] ); ?>
 					</a>
 				<?php endforeach; ?>
+				<a
+					href="<?php echo esc_url( admin_url( 'admin.php?page=' . BFM_Admin::SETTINGS_SLUG ) ); ?>"
+					class="bunny-nav-item<?php echo BFM_Admin::SETTINGS_SLUG === $current_slug ? ' bunny-nav-active' : ''; ?>"
+				>
+					<?php esc_html_e( 'Settings', 'bunny-figure-metadata' ); ?>
+				</a>
+				<a
+					href="<?php echo esc_url( admin_url( 'admin.php?page=' . BFM_Admin::FEATURES_SETTINGS_SLUG ) ); ?>"
+					class="bunny-nav-item<?php echo BFM_Admin::FEATURES_SETTINGS_SLUG === $current_slug ? ' bunny-nav-active' : ''; ?>"
+				>
+					<?php esc_html_e( 'Features', 'bunny-figure-metadata' ); ?>
+				</a>
 			</nav>
 		</div>
 		<?php

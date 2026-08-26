@@ -93,9 +93,9 @@ endif;
 						<tr>
 							<th><?php echo wp_kses_post( bfm_sortable_column_header( 'name', $entity['label'], $slug, $orderby, $order ) ); ?></th>
 							<th style="width:10%;text-align:right;"><?php echo wp_kses_post( bfm_sortable_column_header( 'posts', __( 'Posts', 'bunny-figure-metadata' ), $slug, $orderby, $order ) ); ?></th>
-							<th style="width:20%;"><?php esc_html_e( 'TAG asociado', 'bunny-figure-metadata' ); ?></th>
-							<th style="width:22%;"><?php esc_html_e( 'URL', 'bunny-figure-metadata' ); ?></th>
-							<th style="width:14%;"><?php esc_html_e( 'Logo', 'bunny-figure-metadata' ); ?></th>
+							<?php if ( ! empty( $entity['tag'] ) ) : ?><th style="width:20%;"><?php esc_html_e( 'TAG asociado', 'bunny-figure-metadata' ); ?></th><?php endif; ?>
+							<?php if ( ! empty( $entity['url'] ) ) : ?><th style="width:22%;"><?php esc_html_e( 'URL', 'bunny-figure-metadata' ); ?></th><?php endif; ?>
+							<?php if ( ! empty( $entity['logo'] ) ) : ?><th style="width:14%;"><?php esc_html_e( 'Logo', 'bunny-figure-metadata' ); ?></th><?php endif; ?>
 						</tr>
 					</thead>
 					<tbody>
@@ -121,7 +121,7 @@ endif;
 										<?php echo esc_html( number_format_i18n( $count ) ); ?>
 									</a>
 								</td>
-								<td>
+								<?php if ( ! empty( $entity['tag'] ) ) : ?><td>
 									<span
 										class="bfm-tag-cell"
 										data-entity-slug="<?php echo esc_attr( $slug ); ?>"
@@ -136,8 +136,8 @@ endif;
 											<button type="button" class="button-link bfm-tag-select-trigger"><?php esc_html_e( 'Seleccionar TAG...', 'bunny-figure-metadata' ); ?></button>
 										<?php endif; ?>
 									</span>
-								</td>
-								<td>
+								</td><?php endif; ?>
+								<?php if ( ! empty( $entity['url'] ) ) : ?><td>
 									<span
 										class="bfm-url-cell"
 										data-entity-slug="<?php echo esc_attr( $slug ); ?>"
@@ -151,8 +151,8 @@ endif;
 											placeholder="https://"
 										>
 									</span>
-								</td>
-								<td>
+								</td><?php endif; ?>
+								<?php if ( ! empty( $entity['logo'] ) ) : ?><td>
 									<span
 										class="bfm-logo-cell"
 										data-entity-slug="<?php echo esc_attr( $slug ); ?>"
@@ -170,7 +170,7 @@ endif;
 											<button type="button" class="button bfm-logo-select"><?php esc_html_e( 'Subir imagen', 'bunny-figure-metadata' ); ?></button>
 										<?php endif; ?>
 									</span>
-								</td>
+								</td><?php endif; ?>
 							</tr>
 						<?php endforeach; ?>
 					</tbody>

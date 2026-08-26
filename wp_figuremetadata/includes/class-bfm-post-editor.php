@@ -100,7 +100,7 @@ class BFM_Post_Editor {
 		);
 
 		$fields     = BFM_Meta_Fields::all();
-		$tag_fields = BFM_Meta_Fields::tag_sources();
+		$tag_fields = BFM_Meta_Fields::entity_sources();
 
 		echo '<div class="bfm-figure-meta-grid">';
 
@@ -111,7 +111,6 @@ class BFM_Post_Editor {
 				$meta_key,
 				true
 			);
-			$value = '' !== $value ? $value : ( $field['default'] ?? '' );
 
 			$is_tag_source = in_array(
 				$meta_key,
@@ -284,7 +283,7 @@ class BFM_Post_Editor {
 		wp_enqueue_script(
 			'bfm-post-editor-chips',
 			BFM_URL . 'assets/js/post-editor-chips.js',
-			array( 'jquery', 'jquery-ui-autocomplete' ),
+			array( 'jquery' ),
 			BFM_VERSION,
 			true
 		);
@@ -302,12 +301,12 @@ class BFM_Post_Editor {
 	}
 
 	/**
-	 * Preload the existing entity values for each of the four chip fields,
-	 * so the editor's autocomplete is based on administered entity values
+	 * Preload the existing entity values for each of the configured chip fields,
+	 * so the editor's duplicate detection is based on administered entity values
 	 * (BFM_Entity_Repository, the same source used by the admin screens),
-	 * not on WordPress tags. A fixed 4 queries per post-edit screen load
-	 * (one per tag-source meta key), reusing the existing aggregated
-	 * query — no per-keystroke AJAX calls, no N+1.
+	 * not on WordPress tags. The existing aggregated query is reused once per
+	 * configured entity field; there are no per-keystroke AJAX calls or N+1
+	 * queries.
 	 *
 	 * @return array<string, array<int, string>> meta_key => value names.
 	 */
@@ -315,7 +314,7 @@ class BFM_Post_Editor {
 
 		$suggestions = array();
 
-		foreach ( BFM_Meta_Fields::tag_sources() as $meta_key ) {
+		foreach ( BFM_Meta_Fields::entity_sources() as $meta_key ) {
 			$suggestions[ $meta_key ] = array_keys( BFM_Entity_Repository::get_values_with_counts( $meta_key ) );
 		}
 
@@ -382,14 +381,32 @@ class BFM_Post_Editor {
 				display: inline-flex;
 				align-items: center;
 				gap: 6px;
-				background: #f0f0f7;
-				border: 1px solid #dcdcec;
-				color: #3c2a80;
+				background: #f0f0f0;
+				border: 1px solid #c3c4c7;
+				color: #1d2327;
 				font-size: 12px;
 				font-weight: 600;
 				padding: 4px 6px 4px 10px;
 				border-radius: 20px;
 				white-space: nowrap;
+			}
+
+			.bfm-figure-chip-existing {
+				background: #edfaef;
+				border-color: #68b879;
+				color: #155724;
+			}
+
+			.bfm-figure-chip-possible {
+				background: #fff7e6;
+				border-color: #dba617;
+				color: #7a4b00;
+			}
+
+			.bfm-figure-chip-new {
+				background: #fff0f0;
+				border-color: #d63638;
+				color: #8a2424;
 			}
 
 			.bfm-figure-chip-remove {
@@ -407,6 +424,21 @@ class BFM_Post_Editor {
 				opacity: 1;
 			}
 
+			.bfm-figure-chip-action {
+				background: none;
+				border: none;
+				color: inherit;
+				cursor: pointer;
+				font-size: 13px;
+				font-weight: 700;
+				line-height: 1;
+				padding: 0 1px;
+			}
+
+			.bfm-figure-chip-action:hover {
+				text-decoration: underline;
+			}
+
 			.bfm-figure-chip-input {
 				flex: 1 1 120px;
 				min-width: 120px;
@@ -415,13 +447,6 @@ class BFM_Post_Editor {
 				box-shadow: none;
 				padding: 2px 4px;
 				margin: 0;
-			}
-
-			.ui-autocomplete {
-				z-index: 100000 !important;
-				max-height: 240px;
-				overflow-y: auto;
-				overflow-x: hidden;
 			}
 
 			@media (max-width: 782px) {

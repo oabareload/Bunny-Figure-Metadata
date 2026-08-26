@@ -29,6 +29,7 @@ class BFM_Admin {
 	 */
 	const MENU_SLUG = self::PAGE_PREFIX . 'manufacturers';
 	const SETTINGS_SLUG = self::PAGE_PREFIX . 'settings';
+	const FEATURES_SETTINGS_SLUG = self::PAGE_PREFIX . 'features-settings';
 
 	/**
 	 * Build the admin page slug for a given entity slug.
@@ -58,6 +59,14 @@ class BFM_Admin {
 				array( $this, 'render_settings_page' ),
 				'dashicons-tag',
 				57
+			);
+			add_submenu_page(
+				self::SETTINGS_SLUG,
+				__( 'Features', 'bunny-figure-metadata' ),
+				__( 'Features', 'bunny-figure-metadata' ),
+				'manage_options',
+				self::FEATURES_SETTINGS_SLUG,
+				array( $this, 'render_features_settings_page' )
 			);
 			return;
 		}
@@ -114,6 +123,15 @@ class BFM_Admin {
 			self::SETTINGS_SLUG,
 			array( $this, 'render_settings_page' )
 		);
+
+		add_submenu_page(
+			self::page_slug( $first_slug ),
+			__( 'Features', 'bunny-figure-metadata' ),
+			__( 'Features', 'bunny-figure-metadata' ),
+			'manage_options',
+			self::FEATURES_SETTINGS_SLUG,
+			array( $this, 'render_features_settings_page' )
+		);
 	}
 
 	/** Register the global metadata option. */
@@ -126,13 +144,22 @@ class BFM_Admin {
 				'default'           => array(),
 			)
 		);
+
+		register_setting(
+			'bfm_features_settings',
+			BFM_Features_Block::OPTION_NAME,
+			array(
+				'sanitize_callback' => array( $this, 'sanitize_features_settings' ),
+				'default'           => BFM_Features_Block::default_global_settings(),
+			)
+		);
 	}
 
 	/**
 	 * Sanitize metadata rows submitted by the settings screen.
 	 *
 	 * @param mixed $raw_settings Submitted option value.
-	 * @return array<string, array{label:string,default:string,entity:bool}>
+	 * @return array<string, array{label:string,default:string,entity:bool,type:string}>
 	 */
 	public function sanitize_metadata_settings( $raw_settings ): array {
 		$rows  = is_array( $raw_settings ) ? $raw_settings : array();
@@ -147,6 +174,9 @@ class BFM_Admin {
 			$label    = sanitize_text_field( $row['label'] ?? '' );
 
 			if ( '' === $meta_key || '' === $label || isset( $clean[ $meta_key ] ) ) {
+				if ( '' !== $meta_key && isset( $clean[ $meta_key ] ) ) {
+					add_settings_error( BFM_Meta_Fields::OPTION_NAME, 'duplicate_metadata', __( 'El meta key ya está utilizado; se omitió el duplicado.', 'bunny-figure-metadata' ) );
+				}
 				continue;
 			}
 
@@ -154,6 +184,39 @@ class BFM_Admin {
 				'label'   => $label,
 				'default' => sanitize_text_field( $row['default'] ?? '' ),
 				'entity'  => ! empty( $row['entity'] ),
+				'type'    => in_array( $row['type'] ?? '', array( 'text', 'number', 'currency', 'month' ), true ) ? $row['type'] : 'text',
+				'tag'     => ! empty( $row['entity'] ) && ! empty( $row['tag'] ),
+				'url'     => ! empty( $row['entity'] ) && ! empty( $row['url'] ),
+				'logo'    => ! empty( $row['entity'] ) && ! empty( $row['logo'] ),
+			);
+		}
+
+		return $clean;
+	}
+
+	/**
+	 * Sanitize the global Features block configuration.
+	 *
+	 * @param mixed $raw_settings Submitted option value.
+	 * @return array<string, array{show:bool,prefix:string,prefixTag:string,prefixClass:string,valueTag:string,valueClass:string,link_target:string,order:int}>
+	 */
+	public function sanitize_features_settings( $raw_settings ): array {
+		$defaults = BFM_Features_Block::default_global_settings();
+		$rows     = is_array( $raw_settings ) ? $raw_settings : array();
+		$clean    = array();
+
+		foreach ( BFM_Features_Block::fixed_field_keys() as $meta_key ) {
+			$raw = is_array( $rows[ $meta_key ] ?? null ) ? $rows[ $meta_key ] : array();
+			$base = $defaults[ $meta_key ];
+			$clean[ $meta_key ] = array(
+				'show'        => ! empty( $raw['show'] ),
+				'prefix'      => sanitize_text_field( $raw['prefix'] ?? $base['prefix'] ),
+				'prefixTag'   => BFM_Features_Block::sanitize_html_tag( $raw['prefixTag'] ?? $base['prefixTag'] ),
+				'prefixClass' => isset( $raw['prefixClass'] ) ? sanitize_html_class( (string) $raw['prefixClass'] ) : $base['prefixClass'],
+				'valueTag'    => BFM_Features_Block::sanitize_html_tag( $raw['valueTag'] ?? $base['valueTag'] ),
+				'valueClass'  => isset( $raw['valueClass'] ) ? sanitize_html_class( (string) $raw['valueClass'] ) : $base['valueClass'],
+				'link_target' => in_array( $raw['link_target'] ?? $base['link_target'], array( 'tag', 'external' ), true ) ? $raw['link_target'] : 'tag',
+				'order'       => max( 1, absint( $raw['order'] ?? $base['order'] ) ),
 			);
 		}
 
@@ -171,33 +234,130 @@ class BFM_Admin {
 		foreach ( array_keys( $fields ) as $index => $meta_key ) {
 			$rows[ $index ]['meta_key'] = $meta_key;
 		}
-		$rows = array_merge( $rows, array_fill( 0, 3, array( 'meta_key' => '', 'label' => '', 'default' => '', 'entity' => false ) ) );
 		?>
-		<div class="wrap">
-			<h1><?php esc_html_e( 'Metadata Settings', 'bunny-figure-metadata' ); ?></h1>
+		<div class="wrap bunny-wrap bfm-admin-wrap">
+			<?php BFM_Admin_Header::render( self::SETTINGS_SLUG, __( 'Settings', 'bunny-figure-metadata' ) ); ?>
+			<div class="bunny-page-content">
+			<div class="bfm-box">
+			<h2 class="bfm-box-title"><?php esc_html_e( 'Metadata Settings', 'bunny-figure-metadata' ); ?></h2>
 			<p><?php esc_html_e( 'Define los campos disponibles en el editor y cuáles funcionan como catálogos de entidades.', 'bunny-figure-metadata' ); ?></p>
 			<form method="post" action="options.php">
 				<?php settings_fields( 'bfm_metadata_settings' ); ?>
+				<?php settings_errors( BFM_Meta_Fields::OPTION_NAME ); ?>
+				<div id="bfm-metadata-rows">
 				<table class="widefat striped">
 					<thead><tr>
 						<th><?php esc_html_e( 'Meta key', 'bunny-figure-metadata' ); ?></th>
 						<th><?php esc_html_e( 'Nombre', 'bunny-figure-metadata' ); ?></th>
 						<th><?php esc_html_e( 'Valor por defecto', 'bunny-figure-metadata' ); ?></th>
+						<th><?php esc_html_e( 'Tipo', 'bunny-figure-metadata' ); ?></th>
 						<th><?php esc_html_e( 'Catálogo / entidad', 'bunny-figure-metadata' ); ?></th>
+						<th><?php esc_html_e( 'Integraciones del catálogo', 'bunny-figure-metadata' ); ?></th>
 					</tr></thead>
 					<tbody>
 					<?php foreach ( $rows as $index => $field ) : ?>
 						<tr>
-							<td><input type="text" class="regular-text" name="<?php echo esc_attr( self::settings_input_name( $index, 'meta_key' ) ); ?>" value="<?php echo esc_attr( $field['meta_key'] ); ?>"></td>
+							<td><code><?php echo esc_html( $field['meta_key'] ); ?></code><input type="hidden" name="<?php echo esc_attr( self::settings_input_name( $index, 'meta_key' ) ); ?>" value="<?php echo esc_attr( $field['meta_key'] ); ?>"></td>
 							<td><input type="text" class="regular-text" name="<?php echo esc_attr( self::settings_input_name( $index, 'label' ) ); ?>" value="<?php echo esc_attr( $field['label'] ); ?>"></td>
 							<td><input type="text" class="regular-text" name="<?php echo esc_attr( self::settings_input_name( $index, 'default' ) ); ?>" value="<?php echo esc_attr( $field['default'] ); ?>"></td>
-							<td><label><input type="checkbox" name="<?php echo esc_attr( self::settings_input_name( $index, 'entity' ) ); ?>" value="1" <?php checked( $field['entity'] ); ?>> <?php esc_html_e( 'Usar entidad', 'bunny-figure-metadata' ); ?></label></td>
+							<td><select name="<?php echo esc_attr( self::settings_input_name( $index, 'type' ) ); ?>">
+								<?php foreach ( array( 'text', 'number', 'currency', 'month' ) as $type ) : ?>
+									<option value="<?php echo esc_attr( $type ); ?>" <?php selected( $field['type'], $type ); ?>><?php echo esc_html( $type ); ?></option>
+								<?php endforeach; ?>
+							</select></td>
+							<td><label><input type="checkbox" class="bfm-catalog-toggle" name="<?php echo esc_attr( self::settings_input_name( $index, 'entity' ) ); ?>" value="1" <?php checked( $field['entity'] ); ?>> <?php esc_html_e( 'Usar entidad', 'bunny-figure-metadata' ); ?></label></td>
+							<td><div class="bfm-catalog-integrations" <?php echo $field['entity'] ? '' : 'hidden'; ?>>
+								<label><input type="checkbox" name="<?php echo esc_attr( self::settings_input_name( $index, 'tag' ) ); ?>" value="1" <?php checked( $field['tag'] ); ?>> <?php esc_html_e( 'Asociar a TAG', 'bunny-figure-metadata' ); ?></label><br>
+								<label><input type="checkbox" name="<?php echo esc_attr( self::settings_input_name( $index, 'url' ) ); ?>" value="1" <?php checked( $field['url'] ); ?>> <?php esc_html_e( 'Permitir URL externa', 'bunny-figure-metadata' ); ?></label><br>
+								<label><input type="checkbox" name="<?php echo esc_attr( self::settings_input_name( $index, 'logo' ) ); ?>" value="1" <?php checked( $field['logo'] ); ?>> <?php esc_html_e( 'Usar logo', 'bunny-figure-metadata' ); ?></label>
+							</div></td>
 						</tr>
 					<?php endforeach; ?>
 					</tbody>
 				</table>
+				</div>
+				<p><button type="button" class="button" id="bfm-add-metadata"><?php esc_html_e( '+ Agregar metadato', 'bunny-figure-metadata' ); ?></button></p>
 				<?php submit_button(); ?>
 			</form>
+		</div>
+			</div>
+			<div id="bfm-metadata-modal" class="bfm-modal" hidden>
+				<div class="bfm-modal-content" role="dialog" aria-modal="true" aria-labelledby="bfm-metadata-modal-title">
+					<h2 id="bfm-metadata-modal-title"><?php esc_html_e( 'Agregar metadato', 'bunny-figure-metadata' ); ?></h2>
+					<label for="bfm-new-metadata-label"><?php esc_html_e( 'Nombre visible', 'bunny-figure-metadata' ); ?></label>
+					<input type="text" id="bfm-new-metadata-label" class="regular-text" autocomplete="off">
+					<p class="description"><?php esc_html_e( 'La meta key se generará automáticamente con el prefijo _bunny_figure_.', 'bunny-figure-metadata' ); ?></p>
+					<p class="bfm-modal-error" id="bfm-new-metadata-error" role="alert"></p>
+					<p class="submit"><button type="button" class="button button-primary" id="bfm-confirm-metadata"><?php esc_html_e( 'Agregar', 'bunny-figure-metadata' ); ?></button> <button type="button" class="button" id="bfm-cancel-metadata"><?php esc_html_e( 'Cancelar', 'bunny-figure-metadata' ); ?></button></p>
+				</div>
+			</div>
+		<?php
+	}
+
+	/** Render the global Features block settings screen. */
+	public function render_features_settings_page(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to view this page.', 'bunny-figure-metadata' ) );
+		}
+
+		$settings = BFM_Features_Block::global_field_settings();
+		?>
+		<div class="wrap bunny-wrap bfm-admin-wrap">
+			<?php BFM_Admin_Header::render( self::FEATURES_SETTINGS_SLUG, __( 'Features', 'bunny-figure-metadata' ) ); ?>
+			<div class="bunny-page-content">
+				<div class="bfm-box">
+					<h2 class="bfm-box-title"><?php esc_html_e( 'Features block settings', 'bunny-figure-metadata' ); ?></h2>
+					<p><?php esc_html_e( 'Configura qué campos forman parte del bloque y cómo se muestran globalmente en todas las instancias.', 'bunny-figure-metadata' ); ?></p>
+					<form method="post" action="options.php">
+						<?php settings_fields( 'bfm_features_settings' ); ?>
+						<?php settings_errors( BFM_Features_Block::OPTION_NAME ); ?>
+						<table class="widefat striped">
+							<thead>
+							<tr>
+								<th><?php esc_html_e( 'Campo', 'bunny-figure-metadata' ); ?></th>
+								<th><?php esc_html_e( 'Mostrar', 'bunny-figure-metadata' ); ?></th>
+								<th><?php esc_html_e( 'Orden', 'bunny-figure-metadata' ); ?></th>
+								<th><?php esc_html_e( 'Prefijo', 'bunny-figure-metadata' ); ?></th>
+								<th><?php esc_html_e( 'Prefijo HTML', 'bunny-figure-metadata' ); ?></th>
+								<th><?php esc_html_e( 'Clase prefijo', 'bunny-figure-metadata' ); ?></th>
+								<th><?php esc_html_e( 'Valor HTML', 'bunny-figure-metadata' ); ?></th>
+								<th><?php esc_html_e( 'Clase valor', 'bunny-figure-metadata' ); ?></th>
+								<th><?php esc_html_e( 'Destino del enlace', 'bunny-figure-metadata' ); ?></th>
+							</tr>
+							</thead>
+							<tbody>
+							<?php foreach ( BFM_Features_Block::fixed_field_keys() as $meta_key ) : $field = BFM_Meta_Fields::all()[ $meta_key ] ?? array( 'label' => $meta_key ); $setting = $settings[ $meta_key ]; ?>
+								<tr>
+									<td><strong><?php echo esc_html( $field['label'] ); ?></strong><br><code><?php echo esc_html( $meta_key ); ?></code></td>
+									<td><label><input type="checkbox" name="<?php echo esc_attr( BFM_Features_Block::OPTION_NAME . '[' . $meta_key . '][show]' ); ?>" value="1" <?php checked( $setting['show'] ); ?>></label></td>
+									<td><input type="number" min="1" step="1" name="<?php echo esc_attr( BFM_Features_Block::OPTION_NAME . '[' . $meta_key . '][order]' ); ?>" value="<?php echo esc_attr( (string) $setting['order'] ); ?>" class="small-text"></td>
+									<td><input type="text" name="<?php echo esc_attr( BFM_Features_Block::OPTION_NAME . '[' . $meta_key . '][prefix]' ); ?>" value="<?php echo esc_attr( $setting['prefix'] ); ?>" class="regular-text"></td>
+									<td><select name="<?php echo esc_attr( BFM_Features_Block::OPTION_NAME . '[' . $meta_key . '][prefixTag]' ); ?>">
+										<?php foreach ( BFM_Features_Block::ALLOWED_TAGS as $allowed_tag ) : ?>
+											<option value="<?php echo esc_attr( $allowed_tag ); ?>" <?php selected( $setting['prefixTag'], $allowed_tag ); ?>><?php echo esc_html( $allowed_tag ); ?></option>
+										<?php endforeach; ?>
+									</select></td>
+									<td><input type="text" name="<?php echo esc_attr( BFM_Features_Block::OPTION_NAME . '[' . $meta_key . '][prefixClass]' ); ?>" value="<?php echo esc_attr( $setting['prefixClass'] ); ?>" class="regular-text"></td>
+									<td><select name="<?php echo esc_attr( BFM_Features_Block::OPTION_NAME . '[' . $meta_key . '][valueTag]' ); ?>">
+										<?php foreach ( BFM_Features_Block::ALLOWED_TAGS as $allowed_tag ) : ?>
+											<option value="<?php echo esc_attr( $allowed_tag ); ?>" <?php selected( $setting['valueTag'], $allowed_tag ); ?>><?php echo esc_html( $allowed_tag ); ?></option>
+										<?php endforeach; ?>
+									</select></td>
+									<td><input type="text" name="<?php echo esc_attr( BFM_Features_Block::OPTION_NAME . '[' . $meta_key . '][valueClass]' ); ?>" value="<?php echo esc_attr( $setting['valueClass'] ); ?>" class="regular-text"></td>
+									<td><select name="<?php echo esc_attr( BFM_Features_Block::OPTION_NAME . '[' . $meta_key . '][link_target]' ); ?>">
+										<option value="tag" <?php selected( $setting['link_target'], 'tag' ); ?>><?php esc_html_e( 'Tag', 'bunny-figure-metadata' ); ?></option>
+										<?php if ( BFM_Meta_Fields::has_capability( $meta_key, 'url' ) ) : ?>
+											<option value="external" <?php selected( $setting['link_target'], 'external' ); ?>><?php esc_html_e( 'Enlace externo', 'bunny-figure-metadata' ); ?></option>
+										<?php endif; ?>
+									</select></td>
+								</tr>
+							<?php endforeach; ?>
+							</tbody>
+						</table>
+						<?php submit_button(); ?>
+					</form>
+				</div>
+			</div>
 		</div>
 		<?php
 	}
@@ -267,8 +427,12 @@ class BFM_Admin {
 		$values = BFM_Entity_Repository::get_values_with_counts( $entity['meta_key'] );
 		$values = BFM_Entity_Repository::sort_values( $values, $orderby, $order );
 
-		list( $tag_map, $tag_names ) = $this->resolve_tag_associations( $entity['meta_key'] );
-		list( $info_map, $logo_previews ) = $this->resolve_entity_info( $entity['meta_key'] );
+		list( $tag_map, $tag_names ) = ! empty( $entity['tag'] )
+			? $this->resolve_tag_associations( $entity['meta_key'] )
+			: array( array(), array() );
+		list( $info_map, $logo_previews ) = ( ! empty( $entity['url'] ) || ! empty( $entity['logo'] ) )
+			? $this->resolve_entity_info( $entity['meta_key'] )
+			: array( array(), array() );
 
 		$view_file = BFM_PATH . 'admin/views/' . $slug . '.php';
 
@@ -441,6 +605,16 @@ class BFM_Admin {
 
 		if ( false === strpos( $hook, self::PAGE_PREFIX ) ) {
 			return;
+		}
+
+		if ( false !== strpos( $hook, self::SETTINGS_SLUG ) ) {
+			wp_enqueue_script(
+				'bfm-metadata-settings',
+				BFM_URL . 'assets/js/metadata-settings.js',
+				array( 'jquery' ),
+				BFM_VERSION,
+				true
+			);
 		}
 
 		wp_enqueue_style(

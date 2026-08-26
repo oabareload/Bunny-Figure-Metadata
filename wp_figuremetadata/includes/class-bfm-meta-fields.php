@@ -35,6 +35,10 @@ class BFM_Meta_Fields {
 				'label'   => $field['label'],
 				'default' => '',
 				'entity'  => in_array( $meta_key, self::legacy_entity_keys(), true ),
+				'type'    => 'text',
+				'tag'     => in_array( $meta_key, self::legacy_entity_keys(), true ),
+				'url'     => in_array( $meta_key, self::legacy_entity_keys(), true ),
+				'logo'    => in_array( $meta_key, self::legacy_entity_keys(), true ),
 			);
 		}
 
@@ -114,7 +118,7 @@ class BFM_Meta_Fields {
 
 	/**
 	 * @param array<mixed, mixed> $fields Raw option value.
-	 * @return array<string, array{label:string,default:string,entity:bool}>
+	 * @return array<string, array{label:string,default:string,entity:bool,type:string}>
 	 */
 	private static function normalize( array $fields ): array {
 		$normalized = array();
@@ -123,10 +127,17 @@ class BFM_Meta_Fields {
 			if ( '' === $meta_key || ! is_array( $field ) ) {
 				continue;
 			}
+			$types = array( 'text', 'number', 'currency', 'month' );
+			$type  = isset( $field['type'] ) && in_array( $field['type'], $types, true ) ? $field['type'] : 'text';
+			$is_entity = ! empty( $field['entity'] );
 			$normalized[ $meta_key ] = array(
 				'label'   => isset( $field['label'] ) ? sanitize_text_field( $field['label'] ) : $meta_key,
 				'default' => isset( $field['default'] ) ? sanitize_text_field( $field['default'] ) : '',
-				'entity'  => ! empty( $field['entity'] ),
+				'entity'  => $is_entity,
+				'type'    => $type,
+				'tag'     => $is_entity && ( ! array_key_exists( 'tag', $field ) || ! empty( $field['tag'] ) ),
+				'url'     => $is_entity && ( ! array_key_exists( 'url', $field ) || ! empty( $field['url'] ) ),
+				'logo'    => $is_entity && ( ! array_key_exists( 'logo', $field ) || ! empty( $field['logo'] ) ),
 			);
 		}
 		return $normalized;
@@ -141,8 +152,20 @@ class BFM_Meta_Fields {
 	 */
 	public static function tag_sources(): array {
 		return array_keys( array_filter( self::all(), static function ( $field ) {
+			return ! empty( $field['tag'] );
+		} ) );
+	}
+
+	/** @return array<int, string> */
+	public static function entity_sources(): array {
+		return array_keys( array_filter( self::all(), static function ( $field ) {
 			return ! empty( $field['entity'] );
 		} ) );
+	}
+
+	public static function has_capability( string $meta_key, string $capability ): bool {
+		$field = self::all()[ $meta_key ] ?? array();
+		return ! empty( $field['entity'] ) && ! empty( $field[ $capability ] );
 	}
 
 	/**
@@ -169,6 +192,9 @@ class BFM_Meta_Fields {
 			$entities[ $slug ] = array(
 				'label'    => $field['label'],
 				'meta_key' => $meta_key,
+				'tag'      => ! empty( $field['tag'] ),
+				'url'      => ! empty( $field['url'] ),
+				'logo'     => ! empty( $field['logo'] ),
 			);
 		}
 		return $entities;

@@ -190,6 +190,8 @@ class BFM_Featured_Entities_Block {
 		$logo_size   = $this->sanitize_logo_size( $attributes['logoSize'] ?? self::DEFAULT_LOGO_SIZE );
 		$show_count  = ! isset( $attributes['showCount'] ) || (bool) $attributes['showCount'];
 		$link_to_tag = ! isset( $attributes['linkToTag'] ) || (bool) $attributes['linkToTag'];
+		$link_to_tag = $link_to_tag && BFM_Meta_Fields::has_capability( $meta_key, 'tag' );
+		$show_logo   = $show_logo && BFM_Meta_Fields::has_capability( $meta_key, 'logo' );
 
 		$title       = isset( $attributes['title'] ) ? trim( (string) $attributes['title'] ) : '';
 		$title_tag   = $this->sanitize_title_tag( $attributes['titleTag'] ?? 'h2' );

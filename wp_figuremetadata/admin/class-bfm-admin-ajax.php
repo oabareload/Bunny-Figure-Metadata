@@ -102,7 +102,7 @@ class BFM_Admin_Ajax {
 		$value  = $this->validated_value();
 		$term   = $this->validated_term();
 
-		if ( null === $entity || '' === $value || null === $term ) {
+		if ( null === $entity || empty( $entity['tag'] ) || '' === $value || null === $term ) {
 			wp_send_json_error(
 				array( 'message' => __( 'Datos inválidos.', 'bunny-figure-metadata' ) )
 			);
@@ -130,7 +130,7 @@ class BFM_Admin_Ajax {
 		$entity = $this->validated_entity();
 		$value  = $this->validated_value();
 
-		if ( null === $entity || '' === $value ) {
+		if ( null === $entity || empty( $entity['tag'] ) || '' === $value ) {
 			wp_send_json_error(
 				array( 'message' => __( 'Datos inválidos.', 'bunny-figure-metadata' ) )
 			);
@@ -153,7 +153,7 @@ class BFM_Admin_Ajax {
 		$entity = $this->validated_entity();
 		$value  = $this->validated_value();
 
-		if ( null === $entity || '' === $value ) {
+		if ( null === $entity || empty( $entity['url'] ) || '' === $value ) {
 			wp_send_json_error(
 				array( 'message' => __( 'Datos inválidos.', 'bunny-figure-metadata' ) )
 			);
@@ -186,7 +186,7 @@ class BFM_Admin_Ajax {
 		$value       = $this->validated_value();
 		$attachment  = $this->validated_image_attachment();
 
-		if ( null === $entity || '' === $value || null === $attachment ) {
+		if ( null === $entity || empty( $entity['logo'] ) || '' === $value || null === $attachment ) {
 			wp_send_json_error(
 				array( 'message' => __( 'Datos inválidos.', 'bunny-figure-metadata' ) )
 			);
@@ -216,7 +216,7 @@ class BFM_Admin_Ajax {
 		$entity = $this->validated_entity();
 		$value  = $this->validated_value();
 
-		if ( null === $entity || '' === $value ) {
+		if ( null === $entity || empty( $entity['logo'] ) || '' === $value ) {
 			wp_send_json_error(
 				array( 'message' => __( 'Datos inválidos.', 'bunny-figure-metadata' ) )
 			);

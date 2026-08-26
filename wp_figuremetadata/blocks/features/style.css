@@ -33,6 +33,22 @@
 	margin-right: 4px;
 }
 
-.bfm-feature-value a {
+.bfm-feature-value {
+	display: inline;
+}
+
+.bfm-feature-value a,
+.bfm-feature-link {
 	text-decoration: underline;
+}
+
+.bfm-feature-link {
+	display: inline-flex;
+	align-items: baseline;
+	gap: 0.18em;
+}
+
+.bfm-feature-link-external-icon {
+	font-size: 0.82em;
+	line-height: 1;
 }

@@ -4,6 +4,25 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [1.0.0] - 2026-08-26
+
+### Añadido
+
+- Nueva configuración global del bloque de características, disponible desde la navegación del plugin, para decidir qué campos se muestran, en qué orden y cómo se renderizan cada prefijo/valor.
+- Soporte para elegir destino del enlace de cada campo: TAG o enlace externo cuando ese campo dispone de URL configurada; el valor externo muestra un indicador visual con flecha integrada.
+
+### Cambiado
+
+- El bloque de características usa exclusivamente la configuración global del plugin; se eliminó la configuración individual por campo en el editor de Gutenberg.
+- La resolución de enlaces del bloque prioriza la URL externa cuando está configurada como destino y añade un icono de enlace externo sin duplicar lógica ni afectar el resto del plugin.
+
+## [0.9.0] - 2026-08-25
+
+### Cambiado
+
+- Los chips de los metadatos configurados como catálogos muestran visualmente si el valor ya existe (verde), es una posible coincidencia (naranja) o es nuevo (rojo).
+- Las posibles coincidencias pueden aceptarse para reutilizar el nombre canónico existente o rechazarse para conservar el valor original; la detección usa normalización, palabras y distancia de edición sin cambiar el formato de almacenamiento.
+
 ## [0.8.0] - 2026-08-24
 
 ### Añadido

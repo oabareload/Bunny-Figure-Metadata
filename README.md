@@ -4,7 +4,7 @@ Plugin de WordPress, independiente y autónomo, para administrar la metadata est
 
 ## Estado
 
-Versión 0.8.0. Configuración global de metadatos + defaults globales + alta de nuevos metadatos + catálogos dinámicos + editor de metadata basado en chips de entidad + asociación de cada valor de entidad con un TAG de WordPress + información complementaria (URL y logo) por entidad + listado de posts asociados a cada valor de entidad + sincronización de TAGs únicamente al publicar/programar + bloque dinámico de Gutenberg para mostrar las características de la figura en el frontend + bloque dinámico de Gutenberg con caché para mostrar un ranking compacto de entidades destacadas (pensado para el footer). No hay Bunny Score, cards, merge de entidades ni panel de salud en esta fase.
+Versión 1.0.0. Configuración global de metadatos + defaults globales + alta de nuevos metadatos + catálogos dinámicos + editor de metadata basado en chips de entidad + asociación de cada valor de entidad con un TAG de WordPress + información complementaria (URL y logo) por entidad + listado de posts asociados a cada valor de entidad + sincronización de TAGs únicamente al publicar/programar + bloque dinámico de Gutenberg para mostrar las características de la figura en el frontend con configuración global + enlace a TAG o enlace externo configurable por campo + bloque dinámico de Gutenberg con caché para mostrar un ranking compacto de entidades destacadas (pensado para el footer). No hay Bunny Score, cards, merge de entidades ni panel de salud en esta fase.
 
 ## ¿Qué hace?
 
@@ -42,9 +42,10 @@ Los campos que no están marcados como catálogo siguen siendo inputs de texto s
 Los campos marcados como catálogo se editan como **chips individuales** en lugar de un campo de texto libre. Inicialmente son Fabricante, Ilustrador, Serie y Personaje:
 
 - Cada valor aparece como un chip removible: `[ Good Smile Company × ] [ Flare × ]`.
-- El autocompletado al escribir busca entre los **valores de entidad ya administrados** (los mismos que alimentan las cuatro secciones de administración), no entre los TAGs de WordPress.
+- La detección al confirmar la entrada compara con los **valores de entidad ya administrados** (los mismos que alimentan las secciones de administración), no con los TAGs de WordPress; no usa autocomplete.
 - Si el texto escrito coincide (sin distinguir mayúsculas/minúsculas) con un valor existente, se reutiliza exactamente ese texto tal cual está guardado.
 - Si no coincide con ninguno, se puede añadir igualmente como un valor nuevo.
+- Los chips verdes son entidades existentes; los naranjas son posibles coincidencias y permiten aceptar (`✓`) o rechazar (`↶`) la sugerencia; los rojos son valores nuevos.
 - Internamente, el valor se sigue guardando como el mismo texto plano separado por `&` de siempre (`"Good Smile Company & Flare"`) en un input oculto — el formato de almacenamiento no cambió, solo la forma de editarlo.
 
 ### 3. Sincronización metadata → TAGs (solo al publicar o programar)
@@ -110,9 +111,19 @@ Al hacer clic en el número de la columna **Posts** de cualquier fila, se abre �
 - Esta pantalla es de **solo lectura**: no modifica metadata ni TAGs.
 - Paginada (20 posts por página), con navegación Anterior/Siguiente.
 
-### 8. Bloque dinámico "Características" (nuevo en 0.6.0)
+### 8. Bloque dinámico "Características" (configuración global desde 1.0.0)
 
-Un bloque de Gutenberg **dinámico/server-side** (`bunny-figure-metadata/features`) pensado para insertarse en patrones, que reemplaza la dependencia de un plugin externo usado anteriormente para mostrar las características de la figura. No guarda HTML en el post — solo la configuración del bloque; el marcado se genera en cada render a partir de la metadata actual.
+Un bloque de Gutenberg **dinámico/server-side** (`bunny-figure-metadata/features`) pensado para insertarse en patrones, que reemplaza la dependencia de un plugin externo usado anteriormente para mostrar las características de la figura. No guarda HTML en el post — solo la configuración del encabezado del bloque; el marcado se genera en cada render a partir de la metadata actual y de la configuración global del plugin.
+
+En **Figure Metadata > Features** se administra la configuración global del bloque para todos los usos del bloque en el sitio:
+
+- Qué campos aparecen en la lista.
+- El orden de visualización.
+- Prefijo, etiqueta HTML del prefijo, clase CSS del prefijo.
+- Etiqueta HTML del valor y clase CSS del valor.
+- Destino del enlace del valor: **TAG** o **Enlace externo** cuando ese campo tenga URL externa configurada.
+
+La configuración del bloque no ofrece más overrides por campo ni compatibilidad con configuraciones antiguas; la lista global se usa en todas las instancias del bloque y se aplica igual en editor y frontend.
 
 Muestra los 12 campos de metadata del post actual, por ejemplo:
 
