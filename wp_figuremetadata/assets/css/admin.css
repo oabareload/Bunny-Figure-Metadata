@@ -315,6 +315,6 @@
 	color: var(--bunny-text-muted);
 }
 
-#bfm-metadata-rows input.regular-text {
+#bfm-metadata-rows input.regular-text, #bfm-metadata-rows-block input.regular-text {
 	width: auto;
 }

@@ -4,6 +4,19 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [1.0.2] - 2026-08-26
+
+### Añadido
+
+- Valor por defecto configurable por campo en la página global de Features para representar metadatos vacíos.
+
+## [1.0.1] - 2026-08-26
+
+### Cambiado
+
+- Se eliminó de Settings el control de valor por defecto de cada metadato.
+- La configuración global de Features incluye ahora todos los metadatos definidos en Settings, incluidos los añadidos posteriormente.
+
 ## [1.0.0] - 2026-08-26
 
 ### Añadido

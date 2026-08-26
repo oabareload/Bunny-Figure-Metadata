@@ -3,12 +3,13 @@
  * BFM_Features_Block
  *
  * Registers the "Bunny Figure: Características" Gutenberg block: a
- * dynamic/server-side block that reads the 12 structured figure meta
+ * dynamic/server-side block that reads the configured structured figure meta
  * fields of the current post and renders them, replacing the previous
  * dependency on an external plugin for this display.
  *
  * No HTML is ever stored in post_content for this block — only the
- * block's attributes (display configuration) are saved; the markup is
+ * block's heading attributes are saved; field display settings are global
+ * plugin configuration and the markup is
  * generated fresh on every render via render_callback(), reusing the
  * plugin's existing classes:
  *   - BFM_Meta_Fields   for the field list, labels, "&" separator, and
@@ -102,18 +103,13 @@ class BFM_Features_Block {
 
 	/** @return array<int, string> */
 	public static function fixed_field_keys(): array {
-		return array(
-			'_bunny_figure_scale', '_bunny_figure_height', '_bunny_figure_price',
-			'_bunny_figure_release_date', '_bunny_figure_material', '_bunny_figure_manufacturer',
-			'_bunny_figure_sculptor', '_bunny_figure_paintwork', '_bunny_figure_illustrator',
-			'_bunny_figure_series', '_bunny_figure_character', '_bunny_figure_version',
-		);
+		return array_keys( BFM_Meta_Fields::all() );
 	}
 
 	/**
 	 * Default global settings for all features fields.
 	 *
-	 * @return array<string, array{show:bool,prefix:string,prefixTag:string,prefixClass:string,valueTag:string,valueClass:string,link_target:string,order:int}>
+	 * @return array<string, array{show:bool,prefix:string,default:string,prefixTag:string,prefixClass:string,valueTag:string,valueClass:string,link_target:string,order:int}>
 	 */
 	public static function default_global_settings(): array {
 		$settings = array();
@@ -121,6 +117,7 @@ class BFM_Features_Block {
 			$settings[ $meta_key ] = array(
 				'show'        => true,
 				'prefix'      => ( BFM_Meta_Fields::all()[ $meta_key ]['label'] ?? $meta_key ) . ':',
+				'default'     => '',
 				'prefixTag'   => 'span',
 				'prefixClass' => '',
 				'valueTag'    => 'span',
@@ -135,7 +132,7 @@ class BFM_Features_Block {
 	/**
 	 * Get the current global configuration for the block.
 	 *
-	 * @return array<string, array{show:bool,prefix:string,prefixTag:string,prefixClass:string,valueTag:string,valueClass:string,link_target:string,order:int}>
+	 * @return array<string, array{show:bool,prefix:string,default:string,prefixTag:string,prefixClass:string,valueTag:string,valueClass:string,link_target:string,order:int}>
 	 */
 	public static function global_field_settings(): array {
 		$config = get_option( self::OPTION_NAME, self::default_global_settings() );
@@ -148,6 +145,7 @@ class BFM_Features_Block {
 			$clean[ $meta_key ] = array(
 				'show'        => ! empty( $raw['show'] ) || ! array_key_exists( 'show', $raw ),
 				'prefix'      => isset( $raw['prefix'] ) && '' !== trim( (string) $raw['prefix'] ) ? (string) $raw['prefix'] : $base['prefix'],
+				'default'     => isset( $raw['default'] ) ? sanitize_text_field( (string) $raw['default'] ) : $base['default'],
 				'prefixTag'   => self::sanitize_html_tag( $raw['prefixTag'] ?? $base['prefixTag'] ),
 				'prefixClass' => isset( $raw['prefixClass'] ) ? sanitize_html_class( (string) $raw['prefixClass'] ) : $base['prefixClass'],
 				'valueTag'    => self::sanitize_html_tag( $raw['valueTag'] ?? $base['valueTag'] ),
@@ -243,7 +241,7 @@ class BFM_Features_Block {
 		} );
 
 		foreach ( $visible_settings as $meta_key => $settings ) {
-			$field = $all_fields[ $meta_key ] ?? array( 'label' => $meta_key, 'default' => '' );
+			$field = $all_fields[ $meta_key ] ?? array( 'label' => $meta_key );
 
 			if ( ! $settings['show'] ) {
 				continue;
@@ -252,8 +250,10 @@ class BFM_Features_Block {
 			$raw_value = trim( (string) get_post_meta( $post_id, $meta_key, true ) );
 
 			if ( '' === $raw_value ) {
-				$default_value = isset( $field['default'] ) ? (string) $field['default'] : '';
-				$value_html    = '' === $default_value ? '' : esc_html( $default_value );
+				$value_html = esc_html( $settings['default'] );
+				if ( '' === $settings['default'] ) {
+					continue;
+				}
 			} elseif ( in_array( $meta_key, $entity_meta_keys, true ) ) {
 				$value_html = $this->render_entity_value(
 					$raw_value,
@@ -303,7 +303,7 @@ class BFM_Features_Block {
 	 * @param string               $meta_key  Meta key.
 	 * @param array<string,string> $field     Field definition (label).
 	 * @param array<string,mixed>  $settings  Global feature settings.
-	 * @return array{show:bool,prefix:string,prefixTag:string,prefixClass:string,valueTag:string,valueClass:string,link_target:string,order:int}
+	 * @return array{show:bool,prefix:string,default:string,prefixTag:string,prefixClass:string,valueTag:string,valueClass:string,link_target:string,order:int}
 	 */
 	private function effective_field_settings( string $meta_key, array $field, array $settings ): array {
 		$config = is_array( $settings[ $meta_key ] ?? null ) ? $settings[ $meta_key ] : self::default_global_settings()[ $meta_key ];
@@ -311,6 +311,7 @@ class BFM_Features_Block {
 		return array(
 			'show'        => ! empty( $config['show'] ),
 			'prefix'      => isset( $config['prefix'] ) && '' !== trim( (string) $config['prefix'] ) ? (string) $config['prefix'] : $field['label'] . ':',
+			'default'     => isset( $config['default'] ) ? sanitize_text_field( (string) $config['default'] ) : '',
 			'prefixTag'   => self::sanitize_html_tag( $config['prefixTag'] ?? 'span' ),
 			'prefixClass' => isset( $config['prefixClass'] ) ? sanitize_html_class( (string) $config['prefixClass'] ) : '',
 			'valueTag'    => self::sanitize_html_tag( $config['valueTag'] ?? 'span' ),

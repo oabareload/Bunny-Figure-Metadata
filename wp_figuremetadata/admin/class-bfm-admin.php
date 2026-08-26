@@ -159,7 +159,7 @@ class BFM_Admin {
 	 * Sanitize metadata rows submitted by the settings screen.
 	 *
 	 * @param mixed $raw_settings Submitted option value.
-	 * @return array<string, array{label:string,default:string,entity:bool,type:string}>
+	 * @return array<string, array{label:string,entity:bool,type:string}>
 	 */
 	public function sanitize_metadata_settings( $raw_settings ): array {
 		$rows  = is_array( $raw_settings ) ? $raw_settings : array();
@@ -182,7 +182,6 @@ class BFM_Admin {
 
 			$clean[ $meta_key ] = array(
 				'label'   => $label,
-				'default' => sanitize_text_field( $row['default'] ?? '' ),
 				'entity'  => ! empty( $row['entity'] ),
 				'type'    => in_array( $row['type'] ?? '', array( 'text', 'number', 'currency', 'month' ), true ) ? $row['type'] : 'text',
 				'tag'     => ! empty( $row['entity'] ) && ! empty( $row['tag'] ),
@@ -198,7 +197,7 @@ class BFM_Admin {
 	 * Sanitize the global Features block configuration.
 	 *
 	 * @param mixed $raw_settings Submitted option value.
-	 * @return array<string, array{show:bool,prefix:string,prefixTag:string,prefixClass:string,valueTag:string,valueClass:string,link_target:string,order:int}>
+	 * @return array<string, array{show:bool,prefix:string,default:string,prefixTag:string,prefixClass:string,valueTag:string,valueClass:string,link_target:string,order:int}>
 	 */
 	public function sanitize_features_settings( $raw_settings ): array {
 		$defaults = BFM_Features_Block::default_global_settings();
@@ -211,6 +210,7 @@ class BFM_Admin {
 			$clean[ $meta_key ] = array(
 				'show'        => ! empty( $raw['show'] ),
 				'prefix'      => sanitize_text_field( $raw['prefix'] ?? $base['prefix'] ),
+				'default'     => sanitize_text_field( $raw['default'] ?? $base['default'] ),
 				'prefixTag'   => BFM_Features_Block::sanitize_html_tag( $raw['prefixTag'] ?? $base['prefixTag'] ),
 				'prefixClass' => isset( $raw['prefixClass'] ) ? sanitize_html_class( (string) $raw['prefixClass'] ) : $base['prefixClass'],
 				'valueTag'    => BFM_Features_Block::sanitize_html_tag( $raw['valueTag'] ?? $base['valueTag'] ),
@@ -249,7 +249,6 @@ class BFM_Admin {
 					<thead><tr>
 						<th><?php esc_html_e( 'Meta key', 'bunny-figure-metadata' ); ?></th>
 						<th><?php esc_html_e( 'Nombre', 'bunny-figure-metadata' ); ?></th>
-						<th><?php esc_html_e( 'Valor por defecto', 'bunny-figure-metadata' ); ?></th>
 						<th><?php esc_html_e( 'Tipo', 'bunny-figure-metadata' ); ?></th>
 						<th><?php esc_html_e( 'Catálogo / entidad', 'bunny-figure-metadata' ); ?></th>
 						<th><?php esc_html_e( 'Integraciones del catálogo', 'bunny-figure-metadata' ); ?></th>
@@ -259,7 +258,6 @@ class BFM_Admin {
 						<tr>
 							<td><code><?php echo esc_html( $field['meta_key'] ); ?></code><input type="hidden" name="<?php echo esc_attr( self::settings_input_name( $index, 'meta_key' ) ); ?>" value="<?php echo esc_attr( $field['meta_key'] ); ?>"></td>
 							<td><input type="text" class="regular-text" name="<?php echo esc_attr( self::settings_input_name( $index, 'label' ) ); ?>" value="<?php echo esc_attr( $field['label'] ); ?>"></td>
-							<td><input type="text" class="regular-text" name="<?php echo esc_attr( self::settings_input_name( $index, 'default' ) ); ?>" value="<?php echo esc_attr( $field['default'] ); ?>"></td>
 							<td><select name="<?php echo esc_attr( self::settings_input_name( $index, 'type' ) ); ?>">
 								<?php foreach ( array( 'text', 'number', 'currency', 'month' ) as $type ) : ?>
 									<option value="<?php echo esc_attr( $type ); ?>" <?php selected( $field['type'], $type ); ?>><?php echo esc_html( $type ); ?></option>
@@ -311,6 +309,7 @@ class BFM_Admin {
 					<form method="post" action="options.php">
 						<?php settings_fields( 'bfm_features_settings' ); ?>
 						<?php settings_errors( BFM_Features_Block::OPTION_NAME ); ?>
+						<div id="bfm-metadata-rows-block">
 						<table class="widefat striped">
 							<thead>
 							<tr>
@@ -318,6 +317,7 @@ class BFM_Admin {
 								<th><?php esc_html_e( 'Mostrar', 'bunny-figure-metadata' ); ?></th>
 								<th><?php esc_html_e( 'Orden', 'bunny-figure-metadata' ); ?></th>
 								<th><?php esc_html_e( 'Prefijo', 'bunny-figure-metadata' ); ?></th>
+								<th><?php esc_html_e( 'Valor por defecto', 'bunny-figure-metadata' ); ?></th>
 								<th><?php esc_html_e( 'Prefijo HTML', 'bunny-figure-metadata' ); ?></th>
 								<th><?php esc_html_e( 'Clase prefijo', 'bunny-figure-metadata' ); ?></th>
 								<th><?php esc_html_e( 'Valor HTML', 'bunny-figure-metadata' ); ?></th>
@@ -326,12 +326,13 @@ class BFM_Admin {
 							</tr>
 							</thead>
 							<tbody>
-							<?php foreach ( BFM_Features_Block::fixed_field_keys() as $meta_key ) : $field = BFM_Meta_Fields::all()[ $meta_key ] ?? array( 'label' => $meta_key ); $setting = $settings[ $meta_key ]; ?>
+							<?php foreach ( BFM_Meta_Fields::all() as $meta_key => $field ) : $setting = $settings[ $meta_key ]; ?>
 								<tr>
 									<td><strong><?php echo esc_html( $field['label'] ); ?></strong><br><code><?php echo esc_html( $meta_key ); ?></code></td>
 									<td><label><input type="checkbox" name="<?php echo esc_attr( BFM_Features_Block::OPTION_NAME . '[' . $meta_key . '][show]' ); ?>" value="1" <?php checked( $setting['show'] ); ?>></label></td>
 									<td><input type="number" min="1" step="1" name="<?php echo esc_attr( BFM_Features_Block::OPTION_NAME . '[' . $meta_key . '][order]' ); ?>" value="<?php echo esc_attr( (string) $setting['order'] ); ?>" class="small-text"></td>
 									<td><input type="text" name="<?php echo esc_attr( BFM_Features_Block::OPTION_NAME . '[' . $meta_key . '][prefix]' ); ?>" value="<?php echo esc_attr( $setting['prefix'] ); ?>" class="regular-text"></td>
+									<td><input type="text" name="<?php echo esc_attr( BFM_Features_Block::OPTION_NAME . '[' . $meta_key . '][default]' ); ?>" value="<?php echo esc_attr( $setting['default'] ); ?>" class="regular-text"></td>
 									<td><select name="<?php echo esc_attr( BFM_Features_Block::OPTION_NAME . '[' . $meta_key . '][prefixTag]' ); ?>">
 										<?php foreach ( BFM_Features_Block::ALLOWED_TAGS as $allowed_tag ) : ?>
 											<option value="<?php echo esc_attr( $allowed_tag ); ?>" <?php selected( $setting['prefixTag'], $allowed_tag ); ?>><?php echo esc_html( $allowed_tag ); ?></option>
@@ -354,6 +355,7 @@ class BFM_Admin {
 							<?php endforeach; ?>
 							</tbody>
 						</table>
+						</div>
 						<?php submit_button(); ?>
 					</form>
 				</div>

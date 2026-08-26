@@ -4,7 +4,7 @@ Plugin de WordPress, independiente y autónomo, para administrar la metadata est
 
 ## Estado
 
-Versión 1.0.0. Configuración global de metadatos + defaults globales + alta de nuevos metadatos + catálogos dinámicos + editor de metadata basado en chips de entidad + asociación de cada valor de entidad con un TAG de WordPress + información complementaria (URL y logo) por entidad + listado de posts asociados a cada valor de entidad + sincronización de TAGs únicamente al publicar/programar + bloque dinámico de Gutenberg para mostrar las características de la figura en el frontend con configuración global + enlace a TAG o enlace externo configurable por campo + bloque dinámico de Gutenberg con caché para mostrar un ranking compacto de entidades destacadas (pensado para el footer). No hay Bunny Score, cards, merge de entidades ni panel de salud en esta fase.
+Versión 1.0.2. Configuración global de metadatos + alta de nuevos metadatos + catálogos dinámicos + editor de metadata basado en chips de entidad + asociación de cada valor de entidad con un TAG de WordPress + información complementaria (URL y logo) por entidad + listado de posts asociados a cada valor de entidad + sincronización de TAGs únicamente al publicar/programar + bloque dinámico de Gutenberg para mostrar las características de la figura con configuración global para todos los metadatos + valor por defecto configurable por campo en Features + enlace a TAG o enlace externo configurable por campo + bloque dinámico de Gutenberg con caché para mostrar un ranking compacto de entidades destacadas (pensado para el footer). No hay Bunny Score, cards, merge de entidades ni panel de salud en esta fase.
 
 ## ¿Qué hace?
 
@@ -13,7 +13,6 @@ Versión 1.0.0. Configuración global de metadatos + defaults globales + alta de
 En **Figure Metadata > Settings** se administra la lista global de metadatos disponibles en el editor de posts. Cada fila permite definir:
 
 - La **meta key** y el **nombre** visible del campo.
-- El **valor por defecto** global, usado cuando el post todavía no tiene un valor guardado.
 - Si el metadata funciona como **catálogo/entidad**.
 
 La configuración inicial conserva los 12 campos actuales y marca como catálogos Manufacturer, Illustrator, Series y Character. Se pueden añadir nuevos metadatos desde Settings sin modificar código. Cualquier metadata marcada como catálogo utiliza la misma infraestructura existente de entidades: valores independientes, asociación con TAG, URL oficial, logo, conteo de posts y pantalla administrativa propia. Si no está marcada como catálogo, se muestra y guarda como metadata normal.
@@ -37,7 +36,7 @@ En el editor clásico de posts, añade una metabox **"🐰 Datos de la figura"**
 - `_bunny_figure_character` — Personaje
 - `_bunny_figure_version` — Versión
 
-Los campos que no están marcados como catálogo siguen siendo inputs de texto simples, como en el snippet original. Su valor por defecto procede exclusivamente de la configuración global.
+Los campos que no están marcados como catálogo siguen siendo inputs de texto simples, como en el snippet original.
 
 Los campos marcados como catálogo se editan como **chips individuales** en lugar de un campo de texto libre. Inicialmente son Fabricante, Ilustrador, Serie y Personaje:
 
@@ -125,7 +124,7 @@ En **Figure Metadata > Features** se administra la configuración global del blo
 
 La configuración del bloque no ofrece más overrides por campo ni compatibilidad con configuraciones antiguas; la lista global se usa en todas las instancias del bloque y se aplica igual en editor y frontend.
 
-Muestra los 12 campos de metadata del post actual, por ejemplo:
+Muestra los metadatos configurados del post actual, por ejemplo:
 
 ```
 📦 Características
@@ -146,8 +145,8 @@ Muestra los 12 campos de metadata del post actual, por ejemplo:
 **Configuración disponible (panel del bloque):**
 
 - Encabezado general: mostrar/ocultar, elemento HTML (H1–H6, p, div, span, strong, em), clase CSS adicional.
-- Por cada uno de los 12 campos: mostrar/ocultar, prefijo, elemento HTML del prefijo, clase CSS del prefijo, elemento HTML del valor, clase CSS del valor.
-- **Valor por defecto** para metadatos vacíos: configurable libremente (por ejemplo `No dice`, `N/A`, `Desconocido`, o vacío para no mostrar nada). Es puramente una representación visual: nunca se guarda en la metadata, nunca se convierte en una entidad, y nunca genera ni asocia un TAG. El literal `No dice` ya no está hardcodeado en el renderizado — solo sigue apareciendo cuando esa es la metadata real ya guardada (igual que antes).
+- Por cada metadato configurado: mostrar/ocultar, prefijo, elemento HTML del prefijo, clase CSS del prefijo, elemento HTML del valor, clase CSS del valor.
+- Valor por defecto para metadatos vacíos, configurable por campo. Si se deja vacío, ese metadato no genera una fila; por defecto se muestra `No dice`.
 
 **Entidades (Fabricante, Ilustrador, Serie, Personaje):**
 

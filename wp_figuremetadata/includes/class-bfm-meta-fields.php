@@ -33,7 +33,6 @@ class BFM_Meta_Fields {
 		foreach ( self::legacy_fields() as $meta_key => $field ) {
 			$fields[ $meta_key ] = array(
 				'label'   => $field['label'],
-				'default' => '',
 				'entity'  => in_array( $meta_key, self::legacy_entity_keys(), true ),
 				'type'    => 'text',
 				'tag'     => in_array( $meta_key, self::legacy_entity_keys(), true ),
@@ -118,7 +117,7 @@ class BFM_Meta_Fields {
 
 	/**
 	 * @param array<mixed, mixed> $fields Raw option value.
-	 * @return array<string, array{label:string,default:string,entity:bool,type:string}>
+	 * @return array<string, array{label:string,entity:bool,type:string}>
 	 */
 	private static function normalize( array $fields ): array {
 		$normalized = array();
@@ -132,7 +131,6 @@ class BFM_Meta_Fields {
 			$is_entity = ! empty( $field['entity'] );
 			$normalized[ $meta_key ] = array(
 				'label'   => isset( $field['label'] ) ? sanitize_text_field( $field['label'] ) : $meta_key,
-				'default' => isset( $field['default'] ) ? sanitize_text_field( $field['default'] ) : '',
 				'entity'  => $is_entity,
 				'type'    => $type,
 				'tag'     => $is_entity && ( ! array_key_exists( 'tag', $field ) || ! empty( $field['tag'] ) ),

@@ -44,9 +44,6 @@
 		$row.append($('<td>').append($('<input>', {
 			type: 'text', class: 'regular-text', name: inputName('label'), value: label
 		})));
-		$row.append($('<td>').append($('<input>', {
-			type: 'text', class: 'regular-text', name: inputName('default'), value: ''
-		})));
 		$row.append($('<td>').append($('<select>', { name: inputName('type') })
 			.append($('<option>', { value: 'text', text: 'text', selected: true }))
 			.append($('<option>', { value: 'number', text: 'number' }))
