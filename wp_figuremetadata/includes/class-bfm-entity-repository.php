@@ -204,6 +204,149 @@ class BFM_Entity_Repository {
 	}
 
 	/**
+	 * Resolve, for a meta key configured with the "related post" image
+	 * source, the single Media Library attachment ID to use for each of
+	 * its values: the featured image of the value's oldest matching post
+	 * (ties broken deterministically by publish date, ascending), or that
+	 * post's first attached image when it has no featured image.
+	 *
+	 * This is the automatic selection only. A manually chosen override
+	 * (stored separately in BFM_Entity_Info_Map) always takes precedence
+	 * over the value returned here, and callers are responsible for that
+	 * precedence — this method only ever computes the automatic pick.
+	 *
+	 * Performance: exactly two or three queries total, regardless of how
+	 * many values or posts exist — one to resolve every value's oldest
+	 * related post in a single ordered scan, one get_posts() to prime the
+	 * post/meta object cache so get_post_thumbnail_id() doesn't issue one
+	 * query per post, and, only when at least one of those posts has no
+	 * featured image, one more batched query for their first attached
+	 * image.
+	 *
+	 * @param string $meta_key Source meta key.
+	 * @return array<string, int> Map of value name => attachment ID (0 when no image is available).
+	 */
+	public static function get_related_image_attachment_ids( string $meta_key ): array {
+
+		global $wpdb;
+
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT pm.post_id, pm.meta_value
+				FROM {$wpdb->postmeta} pm
+				INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id
+				WHERE pm.meta_key = %s
+				AND pm.meta_value <> ''
+				AND p.post_type = 'post'
+				AND p.post_status IN ('publish', 'future')
+				ORDER BY p.post_date ASC",
+				$meta_key
+			)
+		);
+		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+
+		if ( empty( $rows ) ) {
+			return array();
+		}
+
+		$separator      = BFM_Meta_Fields::value_separator();
+		$excluded_value = BFM_Meta_Fields::excluded_value();
+
+		$first_post_id_by_value = array();
+
+		foreach ( $rows as $row ) {
+			foreach ( explode( $separator, (string) $row->meta_value ) as $name ) {
+
+				$name = trim( $name );
+
+				if ( '' === $name || $excluded_value === strtolower( $name ) ) {
+					continue;
+				}
+
+				// Rows are already ordered by post_date ASC, so the first time a
+				// value is seen is its oldest related post.
+				if ( ! isset( $first_post_id_by_value[ $name ] ) ) {
+					$first_post_id_by_value[ $name ] = (int) $row->post_id;
+				}
+			}
+		}
+
+		if ( empty( $first_post_id_by_value ) ) {
+			return array();
+		}
+
+		$post_ids = array_values( array_unique( $first_post_id_by_value ) );
+
+		// Prime the post/meta object cache so get_post_thumbnail_id() below
+		// hits it instead of issuing one query per post.
+		get_posts(
+			array(
+				'post_type'      => 'post',
+				'post_status'    => array( 'publish', 'future' ),
+				'post__in'       => $post_ids,
+				'posts_per_page' => count( $post_ids ),
+				'orderby'        => 'post__in',
+			)
+		);
+
+		$thumbnail_id_by_post   = array();
+		$posts_needing_fallback = array();
+
+		foreach ( $post_ids as $post_id ) {
+
+			$thumbnail_id = (int) get_post_thumbnail_id( $post_id );
+
+			if ( $thumbnail_id > 0 ) {
+				$thumbnail_id_by_post[ $post_id ] = $thumbnail_id;
+			} else {
+				$posts_needing_fallback[] = $post_id;
+			}
+		}
+
+		$first_attachment_by_post = array();
+
+		if ( ! empty( $posts_needing_fallback ) ) {
+
+			$attachments = get_posts(
+				array(
+					'post_type'       => 'attachment',
+					'post_status'     => 'inherit',
+					'post_mime_type'  => 'image',
+					'post_parent__in' => $posts_needing_fallback,
+					'orderby'         => 'ID',
+					'order'           => 'ASC',
+					'posts_per_page'  => -1,
+				)
+			);
+
+			foreach ( $attachments as $attachment ) {
+
+				$parent = (int) $attachment->post_parent;
+
+				if ( ! isset( $first_attachment_by_post[ $parent ] ) ) {
+					$first_attachment_by_post[ $parent ] = (int) $attachment->ID;
+				}
+			}
+		}
+
+		$result = array();
+
+		foreach ( $first_post_id_by_value as $value => $post_id ) {
+
+			if ( isset( $thumbnail_id_by_post[ $post_id ] ) ) {
+				$result[ $value ] = $thumbnail_id_by_post[ $post_id ];
+			} elseif ( isset( $first_attachment_by_post[ $post_id ] ) ) {
+				$result[ $value ] = $first_attachment_by_post[ $post_id ];
+			} else {
+				$result[ $value ] = 0;
+			}
+		}
+
+		return $result;
+	}
+
+	/**
 	 * Resolve which post IDs contain an exact entity value in a meta
 	 * field, treating "&"-separated values as independent values (a post
 	 * whose field is "A & B" matches both "A" and "B").

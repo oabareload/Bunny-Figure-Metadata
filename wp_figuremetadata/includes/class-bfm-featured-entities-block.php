@@ -406,10 +406,14 @@ class BFM_Featured_Entities_Block {
 	}
 
 	/**
-	 * Attach the logo URL to each entity that has one, resolving every
-	 * attachment in a single batched call via
-	 * BFM_Entity_Info_Map::get_logo_urls() (the same helper used by the
-	 * admin entity list screens — no duplicated logic).
+	 * Attach the logo URL to each entity that has one. The attachment ID
+	 * actually used per value — a manual pick, or the automatic
+	 * related-post pick when the field's image source is 'related' — is
+	 * resolved by the single shared service
+	 * (BFM_Entity_Info_Map::get_effective_image_ids()), the same one the
+	 * admin entity list uses; this method never decides that itself.
+	 * Thumbnail URLs for the resolved IDs are then resolved in one batched
+	 * call via BFM_Entity_Info_Map::get_logo_urls() (no duplicated logic).
 	 *
 	 * @param array<string, array<string, mixed>> $entities Map of name => entity data, modified in place.
 	 * @param string                               $meta_key Entity meta key.
@@ -417,12 +421,13 @@ class BFM_Featured_Entities_Block {
 	 */
 	private function attach_logo_urls( array &$entities, string $meta_key ): void {
 
-		$info_map = BFM_Entity_Info_Map::get_for_meta_key( $meta_key );
+		$image_source = BFM_Meta_Fields::image_source_for_meta_key( $meta_key );
+		$effective_image_ids = BFM_Entity_Info_Map::get_effective_image_ids( $meta_key, $image_source );
 
 		$image_ids = array();
 
 		foreach ( $entities as $name => $entity ) {
-			$image_id = absint( $info_map[ $name ]['image_id'] ?? 0 );
+			$image_id = absint( $effective_image_ids[ $name ] ?? 0 );
 			if ( $image_id > 0 ) {
 				$image_ids[] = $image_id;
 			}
@@ -436,7 +441,7 @@ class BFM_Featured_Entities_Block {
 
 		foreach ( $entities as $name => &$entity ) {
 
-			$image_id = absint( $info_map[ $name ]['image_id'] ?? 0 );
+			$image_id = absint( $effective_image_ids[ $name ] ?? 0 );
 
 			if ( $image_id && isset( $logo_urls[ $image_id ] ) ) {
 				$entity['logo_url'] = $logo_urls[ $image_id ];

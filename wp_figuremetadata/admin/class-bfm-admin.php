@@ -181,12 +181,13 @@ class BFM_Admin {
 			}
 
 			$clean[ $meta_key ] = array(
-				'label'   => $label,
-				'entity'  => ! empty( $row['entity'] ),
-				'type'    => in_array( $row['type'] ?? '', array( 'text', 'number', 'currency', 'month' ), true ) ? $row['type'] : 'text',
-				'tag'     => ! empty( $row['entity'] ) && ! empty( $row['tag'] ),
-				'url'     => ! empty( $row['entity'] ) && ! empty( $row['url'] ),
-				'logo'    => ! empty( $row['entity'] ) && ! empty( $row['logo'] ),
+				'label'        => $label,
+				'entity'       => ! empty( $row['entity'] ),
+				'type'         => in_array( $row['type'] ?? '', array( 'text', 'number', 'currency', 'month' ), true ) ? $row['type'] : 'text',
+				'tag'          => ! empty( $row['entity'] ) && ! empty( $row['tag'] ),
+				'url'          => ! empty( $row['entity'] ) && ! empty( $row['url'] ),
+				'logo'         => ! empty( $row['entity'] ) && ! empty( $row['logo'] ),
+				'image_source' => ! empty( $row['entity'] ) && 'related' === ( $row['image_source'] ?? 'custom' ) ? 'related' : 'custom',
 			);
 		}
 
@@ -265,9 +266,20 @@ class BFM_Admin {
 							</select></td>
 							<td><label><input type="checkbox" class="bfm-catalog-toggle" name="<?php echo esc_attr( self::settings_input_name( $index, 'entity' ) ); ?>" value="1" <?php checked( $field['entity'] ); ?>> <?php esc_html_e( 'Usar entidad', 'bunny-figure-metadata' ); ?></label></td>
 							<td><div class="bfm-catalog-integrations" <?php echo $field['entity'] ? '' : 'hidden'; ?>>
-								<label><input type="checkbox" name="<?php echo esc_attr( self::settings_input_name( $index, 'tag' ) ); ?>" value="1" <?php checked( $field['tag'] ); ?>> <?php esc_html_e( 'Asociar a TAG', 'bunny-figure-metadata' ); ?></label><br>
-								<label><input type="checkbox" name="<?php echo esc_attr( self::settings_input_name( $index, 'url' ) ); ?>" value="1" <?php checked( $field['url'] ); ?>> <?php esc_html_e( 'Permitir URL externa', 'bunny-figure-metadata' ); ?></label><br>
-								<label><input type="checkbox" name="<?php echo esc_attr( self::settings_input_name( $index, 'logo' ) ); ?>" value="1" <?php checked( $field['logo'] ); ?>> <?php esc_html_e( 'Usar logo', 'bunny-figure-metadata' ); ?></label>
+								<div class="bfm-catalog-checks">
+									<label class="bfm-inline-check"><input type="checkbox" name="<?php echo esc_attr( self::settings_input_name( $index, 'tag' ) ); ?>" value="1" <?php checked( $field['tag'] ); ?>> <?php esc_html_e( 'Asociar a TAG', 'bunny-figure-metadata' ); ?></label>
+									<label class="bfm-inline-check"><input type="checkbox" name="<?php echo esc_attr( self::settings_input_name( $index, 'url' ) ); ?>" value="1" <?php checked( $field['url'] ); ?>> <?php esc_html_e( 'Permitir URL externa', 'bunny-figure-metadata' ); ?></label>
+									<label class="bfm-inline-check"><input type="checkbox" class="bfm-logo-toggle" name="<?php echo esc_attr( self::settings_input_name( $index, 'logo' ) ); ?>" value="1" <?php checked( $field['logo'] ); ?>> <?php esc_html_e( 'Usar logo', 'bunny-figure-metadata' ); ?></label>
+								</div>
+								<div class="bfm-image-source-row" <?php echo $field['logo'] ? '' : 'hidden'; ?>>
+									<label class="bfm-inline-select">
+										<span><?php esc_html_e( 'Origen de imagen', 'bunny-figure-metadata' ); ?></span>
+										<select class="bfm-image-source-select" name="<?php echo esc_attr( self::settings_input_name( $index, 'image_source' ) ); ?>">
+											<option value="custom" <?php selected( $field['image_source'] ?? 'custom', 'custom' ); ?>><?php esc_html_e( 'Imagen personalizada', 'bunny-figure-metadata' ); ?></option>
+											<option value="related" <?php selected( $field['image_source'] ?? 'custom', 'related' ); ?>><?php esc_html_e( 'Post relacionado', 'bunny-figure-metadata' ); ?></option>
+										</select>
+									</label>
+								</div>
 							</div></td>
 						</tr>
 					<?php endforeach; ?>
@@ -432,9 +444,9 @@ class BFM_Admin {
 		list( $tag_map, $tag_names ) = ! empty( $entity['tag'] )
 			? $this->resolve_tag_associations( $entity['meta_key'] )
 			: array( array(), array() );
-		list( $info_map, $logo_previews ) = ( ! empty( $entity['url'] ) || ! empty( $entity['logo'] ) )
-			? $this->resolve_entity_info( $entity['meta_key'] )
-			: array( array(), array() );
+		list( $info_map, $logo_previews, $effective_image_ids ) = ( ! empty( $entity['url'] ) || ! empty( $entity['logo'] ) )
+			? $this->resolve_entity_info( $entity )
+			: array( array(), array(), array() );
 
 		$view_file = BFM_PATH . 'admin/views/' . $slug . '.php';
 
@@ -578,23 +590,29 @@ class BFM_Admin {
 	 * BFM_Entity_Info_Map::get_logo_urls() (shared with the "Entidades
 	 * destacadas" block), so it is not duplicated here.
 	 *
-	 * @param string $meta_key Source meta key.
-	 * @return array{0: array<string,array{url:string,image_id:int}>, 1: array<int,string>} [ value => info, image_id => thumbnail_url ]
+	 * When the entity's image source is configured as "related post"
+	 * (BFM_Meta_Fields), also resolves the automatic pick for every value
+	 * (BFM_Entity_Repository::get_related_image_attachment_ids()) and
+	 * folds it in: a manually stored image_id always wins over the
+	 * automatic one, exactly like the entity value's own logo does today.
+	 *
+	 * @param array<string,mixed> $entity Entity definition (meta_key, image_source, ...).
+	 * @return array{0: array<string,array{url:string,image_id:int}>, 1: array<int,string>, 2: array<string,int>} [ value => info, image_id => resolved_url, value => effective image_id ]
 	 */
-	private function resolve_entity_info( string $meta_key ): array {
+	private function resolve_entity_info( array $entity ): array {
 
+		$meta_key = $entity['meta_key'];
 		$info_map = BFM_Entity_Info_Map::get_for_meta_key( $meta_key );
 
-		$image_ids = array_map(
-			static function ( $entry ) {
-				return absint( $entry['image_id'] ?? 0 );
-			},
-			$info_map
-		);
+		$effective_image_ids = ! empty( $entity['logo'] )
+			? BFM_Entity_Info_Map::get_effective_image_ids( $meta_key, $entity['image_source'] ?? 'custom' )
+			: array();
 
-		$logo_previews = BFM_Entity_Info_Map::get_logo_urls( $image_ids );
+		$image_ids_to_resolve = array_values( array_filter( $effective_image_ids ) );
 
-		return array( $info_map, $logo_previews );
+		$logo_previews = BFM_Entity_Info_Map::get_logo_urls( $image_ids_to_resolve );
+
+		return array( $info_map, $logo_previews, $effective_image_ids );
 	}
 
 	/**
@@ -681,13 +699,15 @@ class BFM_Admin {
 				'setImageAction'    => 'bfm_set_entity_image',
 				'removeImageAction' => 'bfm_remove_entity_image',
 				'i18n'              => array(
-					'selectImage' => __( 'Seleccionar logo', 'bunny-figure-metadata' ),
-					'useImage'    => __( 'Usar esta imagen', 'bunny-figure-metadata' ),
-					'upload'      => __( 'Subir imagen', 'bunny-figure-metadata' ),
-					'replace'     => __( 'Reemplazar', 'bunny-figure-metadata' ),
-					'remove'      => __( 'Eliminar', 'bunny-figure-metadata' ),
-					'saving'      => __( 'Guardando...', 'bunny-figure-metadata' ),
-					'error'       => __( 'Ocurrió un error. Inténtalo de nuevo.', 'bunny-figure-metadata' ),
+					'selectImage'  => __( 'Seleccionar logo', 'bunny-figure-metadata' ),
+					'useImage'     => __( 'Usar esta imagen', 'bunny-figure-metadata' ),
+					'upload'       => __( 'Subir imagen', 'bunny-figure-metadata' ),
+					'replace'      => __( 'Reemplazar', 'bunny-figure-metadata' ),
+					'remove'       => __( 'Eliminar', 'bunny-figure-metadata' ),
+					'saving'       => __( 'Guardando...', 'bunny-figure-metadata' ),
+					'error'        => __( 'Ocurrió un error. Inténtalo de nuevo.', 'bunny-figure-metadata' ),
+					'useAutomatic' => __( 'Usar automática', 'bunny-figure-metadata' ),
+					'automatic'    => __( 'Automática', 'bunny-figure-metadata' ),
 				),
 			)
 		);

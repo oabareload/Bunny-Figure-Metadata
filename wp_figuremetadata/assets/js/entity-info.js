@@ -205,4 +205,131 @@
 		removeImage($(this).closest('.bfm-logo-cell'));
 	});
 
+	/* ==========================================================================
+	   Related-post image — manual override / reset to automatic
+	   ========================================================================== */
+
+	function renderRelatedImagePlaceholder($cell) {
+		$cell.empty().append(
+			$('<button type="button" class="button bfm-related-image-replace"></button>').text(BFM_ENTITY_INFO.i18n.upload)
+		);
+	}
+
+	function renderRelatedImagePreview($cell, imageUrl, isOverride) {
+		var $preview = $('<span class="bfm-logo-preview"></span>');
+
+		$preview.append($('<img>').attr('src', imageUrl).attr('alt', ''));
+
+		var $actions = $('<span class="bfm-logo-actions"></span>');
+		$actions.append(
+			$('<button type="button" class="button-link bfm-related-image-replace"></button>').text(BFM_ENTITY_INFO.i18n.replace)
+		);
+
+		if (isOverride) {
+			$actions.append(
+				$('<button type="button" class="button-link bfm-related-image-reset"></button>').text(BFM_ENTITY_INFO.i18n.useAutomatic)
+			);
+		} else {
+			$actions.append(
+				$('<span class="bfm-related-image-auto-label"></span>').text(BFM_ENTITY_INFO.i18n.automatic)
+			);
+		}
+
+		$preview.append($actions);
+		$cell.empty().append($preview);
+	}
+
+	function saveRelatedImage($cell, attachmentId, previewUrl) {
+		renderLogoSaving($cell);
+
+		$.ajax({
+			url: BFM_ENTITY_INFO.ajaxUrl,
+			method: 'POST',
+			dataType: 'json',
+			data: {
+				action: BFM_ENTITY_INFO.setImageAction,
+				nonce: BFM_ENTITY_INFO.nonce,
+				entity_slug: $cell.data('entity-slug'),
+				value: String($cell.data('value')),
+				attachment_id: attachmentId
+			}
+		})
+			.done(function (response) {
+				if (response && response.success) {
+					// A manual pick always becomes the override once saved.
+					renderRelatedImagePreview($cell, response.data.thumbnail || previewUrl, true);
+				} else {
+					renderRelatedImagePlaceholder($cell);
+					showCellError($cell, (response && response.data && response.data.message) || BFM_ENTITY_INFO.i18n.error);
+				}
+			})
+			.fail(function () {
+				renderRelatedImagePlaceholder($cell);
+				showCellError($cell, BFM_ENTITY_INFO.i18n.error);
+			});
+	}
+
+	function resetRelatedImage($cell) {
+		renderLogoSaving($cell);
+
+		$.ajax({
+			url: BFM_ENTITY_INFO.ajaxUrl,
+			method: 'POST',
+			dataType: 'json',
+			data: {
+				action: BFM_ENTITY_INFO.removeImageAction,
+				nonce: BFM_ENTITY_INFO.nonce,
+				entity_slug: $cell.data('entity-slug'),
+				value: String($cell.data('value'))
+			}
+		})
+			.always(function () {
+				// The automatic image is resolved server-side from the value's
+				// related posts; reloading is the simplest way to show it here
+				// without duplicating that resolution logic in JavaScript.
+				window.location.reload();
+			});
+	}
+
+	function openRelatedImageMediaFrame($cell) {
+		if (typeof wp === 'undefined' || !wp.media) {
+			return;
+		}
+
+		// No dedicated media ↔ entity-value relationship exists in the
+		// plugin, so the next best thing is WordPress's own attachment
+		// search (title/caption/alt/description), seeded with the exact
+		// metadata value (e.g. "Hatsune Miku") so relevant images surface
+		// first without introducing any new indexing or taxonomy.
+		var searchTerm = String($cell.data('value') || '');
+
+		var frame = wp.media({
+			title: BFM_ENTITY_INFO.i18n.selectImage,
+			button: { text: BFM_ENTITY_INFO.i18n.useImage },
+			library: { type: 'image', search: searchTerm },
+			multiple: false
+		});
+
+		frame.on('select', function () {
+			var attachment = frame.state().get('selection').first().toJSON();
+			var previewUrl = (attachment.sizes && attachment.sizes.thumbnail)
+				? attachment.sizes.thumbnail.url
+				: attachment.url;
+
+			saveRelatedImage($cell, attachment.id, previewUrl);
+		});
+
+		frame.open();
+	}
+
+	$(document).on('click', '.bfm-related-image-replace', function (e) {
+		e.preventDefault();
+		openRelatedImageMediaFrame($(this).closest('.bfm-related-image-cell'));
+	});
+
+	$(document).on('click', '.bfm-related-image-reset', function (e) {
+		e.preventDefault();
+		resetRelatedImage($(this).closest('.bfm-related-image-cell'));
+	});
+
 })(jQuery);

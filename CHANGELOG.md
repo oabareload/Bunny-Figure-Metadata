@@ -4,6 +4,36 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [1.1.1] - 2026-08-29
+
+### Corregido
+
+- El selector **Origen de imagen** en Settings ahora solo se muestra cuando **Usar logo** está activo, y se oculta al desactivarlo; sin cambios en los metadatos que ya usaban logos personalizados.
+- El bloque **Entidades destacadas** solo resolvía el `image_id` guardado manualmente, por lo que un metadato configurado con origen "Imagen de un post relacionado" nunca mostraba su imagen automática (solo funcionaba si antes se fijaba una imagen manual). Ahora resuelve la imagen efectiva — manual si existe, automática si no — con el mismo servicio que ya usa la pantalla de la entidad.
+- **Cambiar** en la imagen de un post relacionado ahora abre el selector de medios con la búsqueda pre-rellenada con el nombre exacto del valor del metadato (p. ej. `Hatsune Miku` para `character`), usando la búsqueda nativa de la Media Library; no se creó ningún sistema nuevo de indexación o relación.
+
+### Añadido
+
+- `BFM_Entity_Info_Map::get_effective_image_ids()`: único servicio compartido que resuelve la imagen que debe mostrarse por cada valor de un metadato (manual si existe, automática desde el post relacionado si no), usado ahora tanto por la pantalla de la entidad como por el bloque de Entidades destacadas — sin lógica duplicada.
+- `BFM_Meta_Fields::image_source_for_meta_key()`: helper único para resolver el origen de imagen configurado a partir del meta_key.
+
+### Cambiado
+
+- Los controles de "Integraciones del catálogo" en Settings (Asociar a TAG / Permitir URL externa / Usar logo / Origen de imagen) se rediseñaron para ser compactos: checkboxes en una fila con ajuste de línea en lugar de una etiqueta por línea, y el selector de origen de imagen con altura y ancho reducidos. Sin cambios de estilo fuera de esta pantalla.
+
+## [1.1.0] - 2026-08-28
+
+### Añadido
+
+- Nuevo origen de imagen configurable por metadato de catálogo (Settings > Origen de imagen): **Imagen personalizada (logo)** (comportamiento existente) o **Imagen de un post relacionado**. Disponible para cualquier metadato de catálogo; por ahora solo se usa con Personaje.
+- Cuando el origen es "Imagen de un post relacionado", la imagen se selecciona automáticamente (imagen destacada del post relacionado más antiguo o, si no tiene, su primera imagen adjunta) y puede sobreescribirse manualmente desde la pantalla de la entidad, igual que el logo; la selección manual queda fija y ya no cambia automáticamente. Solo se guarda el ID del adjunto, nunca la URL.
+- `BFM_Entity_Repository::get_related_image_attachment_ids()`: resuelve la imagen automática de cada valor de entidad reutilizando la relación valor → posts ya existente, con un máximo de tres consultas en total sin importar cuántos valores o posts existan.
+- `BFM_Entity_Info_Map::get_display_image_html()`: genera el `<img>` de la imagen de una entidad con `wp_get_attachment_image()`, solicitando siempre el tamaño `thumbnail` o, si no existe para ese adjunto, el tamaño más pequeño realmente disponible (nunca `full`/`large`).
+
+### Cambiado
+
+- `BFM_Entity_Info_Map::get_logo_urls()` aplica ahora esa misma resolución de tamaño con reserva al tamaño más pequeño disponible cuando `thumbnail` no existe para un adjunto, en lugar de omitir la imagen; sin cambios para los adjuntos que ya tienen `thumbnail` (el caso habitual).
+
 ## [1.0.2] - 2026-08-26
 
 ### Añadido

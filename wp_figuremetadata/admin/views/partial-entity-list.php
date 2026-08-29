@@ -17,6 +17,8 @@
  *   array<int,string>    $tag_names     Term_id => current tag name.
  *   array<string,array{url:string,image_id:int}> $info_map      Value name => complementary info (URL + logo attachment id).
  *   array<int,string>    $logo_previews Attachment id => thumbnail URL.
+ *   array<string,int>    $effective_image_ids Value name => image id actually displayed (manual override, or the
+ *                        auto-resolved related-post image when $entity['image_source'] is 'related').
  *
  * @package BunnyFigureMetadata
  */
@@ -153,23 +155,52 @@ endif;
 									</span>
 								</td><?php endif; ?>
 								<?php if ( ! empty( $entity['logo'] ) ) : ?><td>
-									<span
-										class="bfm-logo-cell"
-										data-entity-slug="<?php echo esc_attr( $slug ); ?>"
-										data-value="<?php echo esc_attr( $name ); ?>"
-									>
-										<?php if ( $image_id && '' !== $logo_url ) : ?>
-											<span class="bfm-logo-preview">
-												<img src="<?php echo esc_url( $logo_url ); ?>" alt="">
-												<span class="bfm-logo-actions">
-													<button type="button" class="button-link bfm-logo-replace"><?php esc_html_e( 'Reemplazar', 'bunny-figure-metadata' ); ?></button>
-													<button type="button" class="button-link bfm-logo-remove"><?php esc_html_e( 'Eliminar', 'bunny-figure-metadata' ); ?></button>
+									<?php if ( 'related' === ( $entity['image_source'] ?? 'custom' ) ) : ?>
+										<?php
+										$effective_id   = absint( $effective_image_ids[ $name ] ?? 0 );
+										$is_override    = $image_id > 0;
+										$effective_html = $effective_id ? BFM_Entity_Info_Map::get_display_image_html( $effective_id, array( 'alt' => '' ) ) : '';
+										?>
+										<span
+											class="bfm-logo-cell bfm-related-image-cell"
+											data-entity-slug="<?php echo esc_attr( $slug ); ?>"
+											data-value="<?php echo esc_attr( $name ); ?>"
+										>
+											<?php if ( '' !== $effective_html ) : ?>
+												<span class="bfm-logo-preview">
+													<?php echo wp_kses_post( $effective_html ); ?>
+													<span class="bfm-logo-actions">
+														<button type="button" class="button-link bfm-related-image-replace"><?php esc_html_e( 'Cambiar', 'bunny-figure-metadata' ); ?></button>
+														<?php if ( $is_override ) : ?>
+															<button type="button" class="button-link bfm-related-image-reset"><?php esc_html_e( 'Usar automática', 'bunny-figure-metadata' ); ?></button>
+														<?php else : ?>
+															<span class="bfm-related-image-auto-label"><?php esc_html_e( 'Automática', 'bunny-figure-metadata' ); ?></span>
+														<?php endif; ?>
+													</span>
 												</span>
-											</span>
-										<?php else : ?>
-											<button type="button" class="button bfm-logo-select"><?php esc_html_e( 'Subir imagen', 'bunny-figure-metadata' ); ?></button>
-										<?php endif; ?>
-									</span>
+											<?php else : ?>
+												<button type="button" class="button bfm-related-image-replace"><?php esc_html_e( 'Elegir imagen', 'bunny-figure-metadata' ); ?></button>
+											<?php endif; ?>
+										</span>
+									<?php else : ?>
+										<span
+											class="bfm-logo-cell"
+											data-entity-slug="<?php echo esc_attr( $slug ); ?>"
+											data-value="<?php echo esc_attr( $name ); ?>"
+										>
+											<?php if ( $image_id && '' !== $logo_url ) : ?>
+												<span class="bfm-logo-preview">
+													<img src="<?php echo esc_url( $logo_url ); ?>" alt="">
+													<span class="bfm-logo-actions">
+														<button type="button" class="button-link bfm-logo-replace"><?php esc_html_e( 'Reemplazar', 'bunny-figure-metadata' ); ?></button>
+														<button type="button" class="button-link bfm-logo-remove"><?php esc_html_e( 'Eliminar', 'bunny-figure-metadata' ); ?></button>
+													</span>
+												</span>
+											<?php else : ?>
+												<button type="button" class="button bfm-logo-select"><?php esc_html_e( 'Subir imagen', 'bunny-figure-metadata' ); ?></button>
+											<?php endif; ?>
+										</span>
+									<?php endif; ?>
 								</td><?php endif; ?>
 							</tr>
 						<?php endforeach; ?>

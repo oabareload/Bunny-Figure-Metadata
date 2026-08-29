@@ -3,7 +3,7 @@
  * Plugin Name:       Bunny Figure Metadata
  * Plugin URI:        https://bunnychase.net/bunny-figure-metadata
  * Description:       Administra la metadata estructurada de figuras (fabricante, ilustrador, serie, personaje y demás campos) y las entidades derivadas de esa metadata. Parte de la familia de plugins BunnyChase.
- * Version:           1.0.2
+ * Version:           1.1.1
  * Requires at least: 6.0
  * Requires PHP:      8.2
  * Author:            BunnyChase
@@ -25,7 +25,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 // Constants
 // ─────────────────────────────────────────────────────────────────────────────
 
-define( 'BFM_VERSION',  '1.0.2' );
+define( 'BFM_VERSION',  '1.1.1' );
 define( 'BFM_PATH',     plugin_dir_path( __FILE__ ) );
 define( 'BFM_URL',      plugin_dir_url( __FILE__ ) );
 define( 'BFM_BASENAME', plugin_basename( __FILE__ ) );

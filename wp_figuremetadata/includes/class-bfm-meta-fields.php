@@ -32,12 +32,13 @@ class BFM_Meta_Fields {
 		$fields = array();
 		foreach ( self::legacy_fields() as $meta_key => $field ) {
 			$fields[ $meta_key ] = array(
-				'label'   => $field['label'],
-				'entity'  => in_array( $meta_key, self::legacy_entity_keys(), true ),
-				'type'    => 'text',
-				'tag'     => in_array( $meta_key, self::legacy_entity_keys(), true ),
-				'url'     => in_array( $meta_key, self::legacy_entity_keys(), true ),
-				'logo'    => in_array( $meta_key, self::legacy_entity_keys(), true ),
+				'label'        => $field['label'],
+				'entity'       => in_array( $meta_key, self::legacy_entity_keys(), true ),
+				'type'         => 'text',
+				'tag'          => in_array( $meta_key, self::legacy_entity_keys(), true ),
+				'url'          => in_array( $meta_key, self::legacy_entity_keys(), true ),
+				'logo'         => in_array( $meta_key, self::legacy_entity_keys(), true ),
+				'image_source' => 'custom',
 			);
 		}
 
@@ -129,13 +130,19 @@ class BFM_Meta_Fields {
 			$types = array( 'text', 'number', 'currency', 'month' );
 			$type  = isset( $field['type'] ) && in_array( $field['type'], $types, true ) ? $field['type'] : 'text';
 			$is_entity = ! empty( $field['entity'] );
+			$image_sources = array( 'custom', 'related' );
+			$image_source  = isset( $field['image_source'] ) && in_array( $field['image_source'], $image_sources, true ) ? $field['image_source'] : 'custom';
 			$normalized[ $meta_key ] = array(
-				'label'   => isset( $field['label'] ) ? sanitize_text_field( $field['label'] ) : $meta_key,
-				'entity'  => $is_entity,
-				'type'    => $type,
-				'tag'     => $is_entity && ( ! array_key_exists( 'tag', $field ) || ! empty( $field['tag'] ) ),
-				'url'     => $is_entity && ( ! array_key_exists( 'url', $field ) || ! empty( $field['url'] ) ),
-				'logo'    => $is_entity && ( ! array_key_exists( 'logo', $field ) || ! empty( $field['logo'] ) ),
+				'label'        => isset( $field['label'] ) ? sanitize_text_field( $field['label'] ) : $meta_key,
+				'entity'       => $is_entity,
+				'type'         => $type,
+				'tag'          => $is_entity && ( ! array_key_exists( 'tag', $field ) || ! empty( $field['tag'] ) ),
+				'url'          => $is_entity && ( ! array_key_exists( 'url', $field ) || ! empty( $field['url'] ) ),
+				'logo'         => $is_entity && ( ! array_key_exists( 'logo', $field ) || ! empty( $field['logo'] ) ),
+				// Only meaningful when 'logo' is enabled: whether the entity's
+				// image is a custom uploaded logo (default, previous behavior)
+				// or auto-resolved from one of its related posts.
+				'image_source' => $is_entity ? $image_source : 'custom',
 			);
 		}
 		return $normalized;
@@ -167,6 +174,22 @@ class BFM_Meta_Fields {
 	}
 
 	/**
+	 * Resolve the configured image source ('custom' or 'related') for a
+	 * single meta key by its meta_key (rather than by entity slug, as
+	 * entities() is keyed). Non-entity fields always resolve to 'custom'.
+	 * Shared by every block/screen that needs to know which image
+	 * resolution strategy applies to a given entity meta key, so this
+	 * lookup exists in exactly one place.
+	 *
+	 * @param string $meta_key Source meta key.
+	 * @return string 'custom' or 'related'.
+	 */
+	public static function image_source_for_meta_key( string $meta_key ): string {
+		$field = self::all()[ $meta_key ] ?? array();
+		return ( ! empty( $field['entity'] ) && 'related' === ( $field['image_source'] ?? 'custom' ) ) ? 'related' : 'custom';
+	}
+
+	/**
 	 * Administrable entities in this first phase.
 	 *
 	 * Maps an entity slug (used in admin URLs) to its source meta key
@@ -188,11 +211,12 @@ class BFM_Meta_Fields {
 			}
 			$slug = $legacy_slugs[ $meta_key ] ?? sanitize_title( preg_replace( '/^_bunny_figure_/', '', $meta_key ) );
 			$entities[ $slug ] = array(
-				'label'    => $field['label'],
-				'meta_key' => $meta_key,
-				'tag'      => ! empty( $field['tag'] ),
-				'url'      => ! empty( $field['url'] ),
-				'logo'     => ! empty( $field['logo'] ),
+				'label'        => $field['label'],
+				'meta_key'     => $meta_key,
+				'tag'          => ! empty( $field['tag'] ),
+				'url'          => ! empty( $field['url'] ),
+				'logo'         => ! empty( $field['logo'] ),
+				'image_source' => $field['image_source'] ?? 'custom',
 			);
 		}
 		return $entities;

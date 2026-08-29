@@ -194,12 +194,12 @@ class BFM_Admin_Ajax {
 
 		BFM_Entity_Info_Map::set_image( $entity['meta_key'], $value, $attachment );
 
-		$thumbnail = wp_get_attachment_image_src( $attachment, 'thumbnail' );
+		$thumbnail_urls = BFM_Entity_Info_Map::get_logo_urls( array( $attachment ) );
 
 		wp_send_json_success(
 			array(
 				'image_id'  => $attachment,
-				'thumbnail' => $thumbnail ? $thumbnail[0] : '',
+				'thumbnail' => $thumbnail_urls[ $attachment ] ?? '',
 			)
 		);
 	}

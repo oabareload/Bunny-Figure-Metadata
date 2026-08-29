@@ -53,18 +53,27 @@
 			type: 'checkbox', name: inputName('entity'), value: '1'
 		})).append(' Usar entidad')));
 		$row.find('input[name$="[entity]"]').addClass('bfm-catalog-toggle');
-		$row.append($('<td>').append($('<div>', { class: 'bfm-catalog-integrations', hidden: true })
-			.append($('<label>').append($('<input>', { type: 'checkbox', name: inputName('tag'), value: '1' })).append(' Asociar a TAG'))
-			.append('<br>')
-			.append($('<label>').append($('<input>', { type: 'checkbox', name: inputName('url'), value: '1' })).append(' Permitir URL externa'))
-			.append('<br>')
-			.append($('<label>').append($('<input>', { type: 'checkbox', name: inputName('logo'), value: '1' })).append(' Usar logo'))));
+		var $checks = $('<div>', { class: 'bfm-catalog-checks' })
+			.append($('<label>', { class: 'bfm-inline-check' }).append($('<input>', { type: 'checkbox', name: inputName('tag'), value: '1' })).append(' Asociar a TAG'))
+			.append($('<label>', { class: 'bfm-inline-check' }).append($('<input>', { type: 'checkbox', name: inputName('url'), value: '1' })).append(' Permitir URL externa'))
+			.append($('<label>', { class: 'bfm-inline-check' }).append($('<input>', { type: 'checkbox', class: 'bfm-logo-toggle', name: inputName('logo'), value: '1' })).append(' Usar logo'));
+		var $imageSourceRow = $('<div>', { class: 'bfm-image-source-row', hidden: true })
+			.append($('<label>', { class: 'bfm-inline-select' })
+				.append($('<span>').text('Origen de imagen'))
+				.append($('<select>', { class: 'bfm-image-source-select', name: inputName('image_source') })
+					.append($('<option>', { value: 'custom', text: 'Imagen personalizada', selected: true }))
+					.append($('<option>', { value: 'related', text: 'Post relacionado' }))));
+		$row.append($('<td>').append($('<div>', { class: 'bfm-catalog-integrations', hidden: true }).append($checks).append($imageSourceRow)));
 		$('#bfm-metadata-rows tbody').append($row);
 		rowIndex += 1;
 	}
 
 	$(document).on('change', '.bfm-catalog-toggle', function () {
 		$(this).closest('tr').find('.bfm-catalog-integrations').prop('hidden', !this.checked);
+	});
+
+	$(document).on('change', '.bfm-logo-toggle', function () {
+		$(this).closest('.bfm-catalog-integrations').find('.bfm-image-source-row').prop('hidden', !this.checked);
 	});
 
 	function closeModal() {

@@ -205,6 +205,12 @@
 	color: #b32d2e;
 }
 
+.bfm-related-image-auto-label {
+	font-size: 11px;
+	color: var(--bunny-text-subtle);
+	font-style: italic;
+}
+
 /* ==========================================================================
    Posts count link (Sprint 3 drill-down entry point)
    ========================================================================== */
@@ -317,4 +323,64 @@
 
 #bfm-metadata-rows input.regular-text, #bfm-metadata-rows-block input.regular-text {
 	width: auto;
+}
+
+/* ==========================================================================
+   Metadata Settings — catalog integrations (compact controls)
+   ========================================================================== */
+
+.bfm-catalog-integrations {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.bfm-catalog-checks {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 4px 14px;
+}
+
+.bfm-inline-check {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	font-size: 12px;
+	line-height: 1.2;
+	white-space: nowrap;
+	margin: 0;
+	font-weight: 400;
+}
+
+.bfm-inline-check input[type="checkbox"] {
+	margin: 0;
+}
+
+.bfm-image-source-row {
+	display: flex;
+}
+
+.bfm-image-source-row[hidden] {
+	display: none;
+}
+
+.bfm-inline-select {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 12px;
+	font-weight: 400;
+	margin: 0;
+	max-width: 100%;
+}
+
+.bfm-image-source-select {
+	font-size: 12px;
+	line-height: 1.2;
+	padding: 2px 22px 2px 6px;
+	min-height: 26px;
+	height: 26px;
+	width: auto;
+	max-width: 200px;
 }

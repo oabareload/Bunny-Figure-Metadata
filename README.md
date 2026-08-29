@@ -4,7 +4,7 @@ Plugin de WordPress, independiente y autónomo, para administrar la metadata est
 
 ## Estado
 
-Versión 1.0.2. Configuración global de metadatos + alta de nuevos metadatos + catálogos dinámicos + editor de metadata basado en chips de entidad + asociación de cada valor de entidad con un TAG de WordPress + información complementaria (URL y logo) por entidad + listado de posts asociados a cada valor de entidad + sincronización de TAGs únicamente al publicar/programar + bloque dinámico de Gutenberg para mostrar las características de la figura con configuración global para todos los metadatos + valor por defecto configurable por campo en Features + enlace a TAG o enlace externo configurable por campo + bloque dinámico de Gutenberg con caché para mostrar un ranking compacto de entidades destacadas (pensado para el footer). No hay Bunny Score, cards, merge de entidades ni panel de salud en esta fase.
+Versión 1.1.1. Configuración global de metadatos + alta de nuevos metadatos + catálogos dinámicos + editor de metadata basado en chips de entidad + asociación de cada valor de entidad con un TAG de WordPress + información complementaria (URL y logo, con origen de imagen configurable por metadato: personalizado o desde un post relacionado) por entidad + listado de posts asociados a cada valor de entidad + sincronización de TAGs únicamente al publicar/programar + bloque dinámico de Gutenberg para mostrar las características de la figura con configuración global para todos los metadatos + valor por defecto configurable por campo en Features + enlace a TAG o enlace externo configurable por campo + bloque dinámico de Gutenberg con caché para mostrar un ranking compacto de entidades destacadas (pensado para el footer). No hay Bunny Score, cards, merge de entidades ni panel de salud en esta fase.
 
 ## ¿Qué hace?
 
@@ -100,6 +100,25 @@ Ambos datos pertenecen a la *entidad* (al valor de metadata), no a ningún post 
 
 **Nota de diseño:** tanto la asociación de TAG como la de URL/logo se identifican por el nombre textual del valor de entidad (p. ej. "Good Smile Company"). Esto es coherente con que la metadata de texto sigue siendo la fuente de verdad: no existe todavía un identificador de entidad independiente del texto.
 
+#### Origen de imagen configurable por metadato (1.1.0, ajustado en 1.1.1)
+
+En **Figure Metadata > Settings**, cada metadato de catálogo tiene, cuando **Usar logo** está activo, un selector **Origen de imagen** con dos opciones (el selector permanece oculto mientras "Usar logo" no esté marcado):
+
+- **Imagen personalizada** (por defecto): el comportamiento de siempre, descrito arriba — se sube o elige manualmente una imagen para cada valor.
+- **Post relacionado**: la imagen de cada valor se resuelve automáticamente a partir de sus posts relacionados (la misma relación valor → posts que ya usa el punto 7), sin necesidad de subir nada:
+  1. Se toma el post relacionado más antiguo de ese valor.
+  2. Se usa su imagen destacada si tiene una.
+  3. Si no tiene imagen destacada, se usa la primera imagen adjunta de ese post.
+  4. Si no hay ninguna imagen disponible, no se muestra ninguna.
+
+  En la columna **Logo** de la pantalla de la entidad, esa imagen automática se etiqueta como "Automática" y puede reemplazarse manualmente con el botón **Cambiar**: abre el selector de medios de WordPress con la búsqueda ya rellenada con el nombre exacto del valor (p. ej. `Hatsune Miku`), usando la búsqueda nativa de la Media Library — no existe ni se creó ningún sistema de indexación propio para relacionar medios con valores de metadata. Solo se guarda el **attachment ID** elegido, nunca la URL. Una vez fijada manualmente, esa elección **ya no cambia automáticamente** aunque aparezcan posts nuevos — el botón **Usar automática** la descarta y vuelve a calcularla a partir de los posts relacionados.
+
+  Esta opción está disponible para cualquier metadato de catálogo, pero por ahora solo se usa con **Personaje**.
+
+  La imagen de la entidad siempre se muestra en tamaño `thumbnail` (o el tamaño registrado más pequeño disponible para ese adjunto si no tiene `thumbnail`), nunca `full`/`large`, generada con las APIs nativas de WordPress (`wp_get_attachment_image()` / `wp_get_attachment_image_src()`).
+
+  La imagen que realmente se muestra para cada valor (manual si existe, automática si no) se resuelve en un único servicio compartido (`BFM_Entity_Info_Map::get_effective_image_ids()`), usado tanto por esta pantalla como por el bloque "Entidades destacadas" (punto 9) — sin lógica duplicada entre ambos.
+
 ### 7. Posts asociados a un valor de entidad
 
 Al hacer clic en el número de la columna **Posts** de cualquier fila, se abre — dentro del propio plugin, reutilizando el header/tabs de BunnyChase — un listado paginado de los posts que contienen ese valor exacto en su metadata:
@@ -184,6 +203,8 @@ El logo se muestra en proporción 1:1 y alineado con la altura del texto (`width
 
 Reutiliza la infraestructura de entidades ya existente (`BFM_Entity_Repository` para el ranking, `BFM_Entity_Tag_Map` para el enlace al TAG, `BFM_Entity_Info_Map` para el logo): no se crea ningún sistema de entidades paralelo. El bloque es de **solo lectura**.
 
+El logo respeta el **origen de imagen** configurado en Settings para ese metadato (punto 6): si es "Imagen personalizada", usa el logo subido manualmente, exactamente como siempre; si es "Post relacionado", muestra la imagen efectiva de cada valor — manual si se fijó una, automática desde su post relacionado si no — resuelta por el mismo servicio compartido que usa la pantalla de la entidad (`BFM_Entity_Info_Map::get_effective_image_ids()`).
+
 **Caché (obligatoria desde esta primera versión):**
 
 - El ranking ya resuelto (nombres, conteos, URL de TAG, URL de logo) para cada configuración de bloque se guarda en un **transient de WordPress**, para no recalcularlo en cada visita del frontend.
@@ -197,6 +218,7 @@ Reutiliza la infraestructura de entidades ya existente (`BFM_Entity_Repository` 
 - El ordenamiento por nombre/posts se aplica en memoria sobre el resultado ya obtenido (`BFM_Entity_Repository::sort_values()`), sin consultas adicionales.
 - Las asociaciones TAG de una sección se resuelven con **una sola consulta batch** (`get_terms` con `include`), nunca una consulta por fila.
 - Las miniaturas de logo se resuelven precargando el caché de adjuntos con **una sola consulta** (`get_posts` con `post__in`); las llamadas posteriores a `wp_get_attachment_image_src()` usan ese caché.
+- **(Desde 1.1.0)** Cuando un metadato de catálogo usa el origen de imagen "Imagen de un post relacionado", la resolución automática por valor (`BFM_Entity_Repository::get_related_image_attachment_ids()`) usa como máximo **tres consultas en total** para toda la pantalla — una para encontrar el post relacionado más antiguo de cada valor, una para precargar el caché de esos posts, y una última, solo si hace falta, para resolver en lote la primera imagen adjunta de los posts sin imagen destacada — sin importar cuántos valores o posts existan.
 - El listado de posts por valor de entidad resuelve todos los IDs coincidentes con la misma consulta agregada ya usada para contar valores, y luego usa un único `WP_Query` con `post__in` + `posts_per_page` para traer solo la página solicitada, evitando la consulta `SQL_CALC_FOUND_ROWS` adicional (`no_found_rows => true`).
 - Las sugerencias de autocompletado del editor (chips) se precargan una sola vez por carga de pantalla de edición de post — 4 consultas agregadas (una por campo de entidad), reutilizando exactamente la misma consulta que ya usan las pantallas de administración de entidades. No hay peticiones AJAX por cada tecla escrita.
 - La sincronización de TAGs ya no se ejecuta en cada guardado, solo cuando el post resulta publicado o programado.
