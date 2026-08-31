@@ -16,6 +16,9 @@
  *   array<string,int>    $tag_map       Value name => associated term_id (0/absent = none).
  *   array<int,string>    $tag_names     Term_id => current tag name.
  *   array<string,array{url:string,image_id:int}> $info_map      Value name => complementary info (URL + logo attachment id).
+ *                        For character, image_id is stored/looked up by the composite identity
+ *                        key (BFM_Character_Identity) while url stays keyed by the plain character
+ *                        name; every other entity uses the plain name for both.
  *   array<int,string>    $logo_previews Attachment id => thumbnail URL.
  *   array<string,int>    $effective_image_ids Value name => image id actually displayed (manual override, or the
  *                        auto-resolved related-post image when $entity['image_source'] is 'related').
@@ -103,8 +106,18 @@ endif;
 					<tbody>
 						<?php foreach ( $values as $name => $count ) : ?>
 							<?php
-							$term_id  = absint( $tag_map[ $name ] ?? 0 );
+							// For character, $name is the composite identity key (BFM_Character_Identity);
+							// $display_name is the plain character name the user should always see, and
+							// is what TAG/URL (unaffected by this feature) are keyed by. For every other
+							// entity, both are identical.
+							$display_name = ( BFM_Character_Identity::CHARACTER_META_KEY === $entity['meta_key'] )
+								? BFM_Character_Identity::display_name( $name )
+								: $name;
+
+							$term_id  = absint( $tag_map[ $display_name ] ?? 0 );
 							$tag_name = ( $term_id && isset( $tag_names[ $term_id ] ) ) ? $tag_names[ $term_id ] : '';
+
+							$url_value = (string) ( $info_map[ $display_name ]['url'] ?? '' );
 
 							$info     = $info_map[ $name ] ?? array(
 								'url'      => '',
@@ -114,7 +127,7 @@ endif;
 							$logo_url = ( $image_id && isset( $logo_previews[ $image_id ] ) ) ? $logo_previews[ $image_id ] : '';
 							?>
 							<tr>
-								<td><?php echo esc_html( $name ); ?></td>
+								<td><?php echo esc_html( $display_name ); ?></td>
 								<td style="text-align:right;font-variant-numeric:tabular-nums;">
 									<a
 										class="bfm-posts-count-link"
@@ -127,7 +140,7 @@ endif;
 									<span
 										class="bfm-tag-cell"
 										data-entity-slug="<?php echo esc_attr( $slug ); ?>"
-										data-value="<?php echo esc_attr( $name ); ?>"
+										data-value="<?php echo esc_attr( $display_name ); ?>"
 									>
 										<?php if ( '' !== $tag_name ) : ?>
 											<span class="bfm-tag-chip" data-term-id="<?php echo esc_attr( $term_id ); ?>">
@@ -143,13 +156,13 @@ endif;
 									<span
 										class="bfm-url-cell"
 										data-entity-slug="<?php echo esc_attr( $slug ); ?>"
-										data-value="<?php echo esc_attr( $name ); ?>"
-										data-saved-value="<?php echo esc_attr( $info['url'] ); ?>"
+										data-value="<?php echo esc_attr( $display_name ); ?>"
+										data-saved-value="<?php echo esc_attr( $url_value ); ?>"
 									>
 										<input
 											type="url"
 											class="bfm-url-input"
-											value="<?php echo esc_attr( $info['url'] ); ?>"
+											value="<?php echo esc_attr( $url_value ); ?>"
 											placeholder="https://"
 										>
 									</span>
@@ -165,6 +178,7 @@ endif;
 											class="bfm-logo-cell bfm-related-image-cell"
 											data-entity-slug="<?php echo esc_attr( $slug ); ?>"
 											data-value="<?php echo esc_attr( $name ); ?>"
+											data-display-name="<?php echo esc_attr( $display_name ); ?>"
 										>
 											<?php if ( '' !== $effective_html ) : ?>
 												<span class="bfm-logo-preview">

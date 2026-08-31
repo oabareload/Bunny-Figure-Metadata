@@ -61,6 +61,409 @@
 }
 
 /* ==========================================================================
+   Maintenance de posts — Full-width Responsive Cards Grid
+   ========================================================================== */
+
+/* Full-width container ONLY on the posts maintenance screen */
+.bfm-posts-maintenance-wrap .bunny-page-content {
+	max-width: none;
+	width: auto;
+	margin-right: 20px;
+}
+
+@media (max-width: 782px) {
+	.bfm-posts-maintenance-wrap .bunny-page-content {
+		margin-right: 0;
+	}
+}
+
+.bfm-maintenance-box {
+	margin-bottom: 24px;
+}
+
+.bfm-post-maintenance-filters {
+	background: #f8fafc;
+	border: 1px solid var(--bunny-border);
+	border-radius: var(--bunny-radius);
+	padding: 16px 20px;
+	margin-bottom: 20px;
+}
+
+.bfm-post-maintenance-filter-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+	gap: 14px;
+	align-items: end;
+}
+
+.bfm-post-maintenance-filter-grid label {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--bunny-text-muted);
+}
+
+.bfm-post-maintenance-filter-grid input[type="text"],
+.bfm-post-maintenance-filter-grid select {
+	width: 100%;
+	max-width: 100%;
+	font-size: 13px;
+	line-height: 1.4;
+	padding: 5px 8px;
+	border: 1px solid #c3c4c7;
+	border-radius: var(--bunny-radius-sm);
+	background: #fff;
+	box-sizing: border-box;
+}
+
+.bfm-post-maintenance-filters .submit {
+	margin: 14px 0 0;
+	padding: 0;
+}
+
+/* Cards Grid */
+.bfm-post-cards-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
+	gap: 18px;
+	margin: 20px 0;
+}
+
+/* Post Card */
+.bfm-post-card {
+	background: var(--bunny-bg);
+	border: 1px solid var(--bunny-border);
+	border-radius: var(--bunny-radius);
+	box-shadow: var(--bunny-shadow);
+	display: flex;
+	flex-direction: column;
+	padding: 16px 18px;
+	position: relative;
+	transition: border-color var(--bunny-transition), box-shadow var(--bunny-transition), transform var(--bunny-transition);
+	box-sizing: border-box;
+}
+
+.bfm-post-card:hover {
+	border-color: var(--bunny-border-strong);
+	box-shadow: var(--bunny-shadow-hover);
+}
+
+/* Card Header */
+.bfm-card-header {
+	border-bottom: 1px solid var(--bunny-border);
+	padding-bottom: 12px;
+	margin-bottom: 14px;
+}
+
+.bfm-card-meta-top {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 6px;
+}
+
+.bfm-card-id-badge {
+	font-size: 11px;
+	font-weight: 700;
+	color: var(--bunny-accent);
+	background: var(--bunny-accent-light);
+	padding: 2px 8px;
+	border-radius: var(--bunny-radius-pill);
+	letter-spacing: 0.03em;
+}
+
+.bfm-card-links {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.bfm-card-action-link {
+	color: var(--bunny-text-muted);
+	text-decoration: none;
+	display: inline-flex;
+	align-items: center;
+	transition: color var(--bunny-transition);
+}
+
+.bfm-card-action-link:hover {
+	color: var(--bunny-accent);
+}
+
+.bfm-card-action-link .dashicons {
+	font-size: 16px;
+	width: 16px;
+	height: 16px;
+}
+
+.bfm-card-title {
+	font-size: 14px;
+	font-weight: 700;
+	line-height: 1.35;
+	margin: 0;
+	color: var(--bunny-text-main);
+	overflow: hidden;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+}
+
+.bfm-card-title a {
+	color: inherit;
+	text-decoration: none;
+}
+
+.bfm-card-title a:hover {
+	color: var(--bunny-accent);
+}
+
+/* Internal fields grid: 2 columns for simple fields, full width for entity/chip fields */
+.bfm-card-fields-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 10px 12px;
+	flex: 1 0 auto;
+}
+
+@media (max-width: 480px) {
+	.bfm-card-fields-grid {
+		grid-template-columns: 1fr;
+	}
+}
+
+.bfm-card-field {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	min-width: 0;
+}
+
+.bfm-card-field.bfm-card-field-full {
+	grid-column: 1 / -1;
+}
+
+.bfm-card-field-label {
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--bunny-text-muted);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.bfm-card-field-control {
+	width: 100%;
+}
+
+.bfm-card-input {
+	width: 100%;
+	box-sizing: border-box;
+	font-size: 12px;
+	padding: 5px 8px;
+	border: 1px solid #c3c4c7;
+	border-radius: var(--bunny-radius-sm);
+	background: #fff;
+	color: var(--bunny-text-main);
+	transition: border-color var(--bunny-transition), box-shadow var(--bunny-transition);
+}
+
+.bfm-card-input:focus {
+	border-color: var(--bunny-accent);
+	box-shadow: 0 0 0 1px var(--bunny-accent);
+	outline: none;
+}
+
+/* Figure chips inside cards */
+.bfm-figure-chip-field {
+	position: relative;
+	width: 100%;
+}
+
+.bfm-figure-chip-control {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 5px;
+	width: 100%;
+	box-sizing: border-box;
+	padding: 4px 6px;
+	border: 1px solid #c3c4c7;
+	border-radius: var(--bunny-radius-sm);
+	background: #fff;
+	min-height: 32px;
+	transition: border-color var(--bunny-transition), box-shadow var(--bunny-transition);
+}
+
+.bfm-figure-chip-control:focus-within {
+	border-color: var(--bunny-accent);
+	box-shadow: 0 0 0 1px var(--bunny-accent);
+}
+
+.bfm-figure-chip-list {
+	display: contents;
+}
+
+.bfm-figure-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	background: #f0f0f1;
+	border: 1px solid #c3c4c7;
+	color: #1d2327;
+	font-size: 11px;
+	font-weight: 600;
+	padding: 2px 5px 2px 8px;
+	border-radius: var(--bunny-radius-pill);
+	white-space: nowrap;
+	line-height: 1.3;
+}
+
+.bfm-figure-chip-existing {
+	background: #edfaef;
+	border-color: #68b879;
+	color: #155724;
+}
+
+.bfm-figure-chip-possible {
+	background: #fff7e6;
+	border-color: #dba617;
+	color: #7a4b00;
+}
+
+.bfm-figure-chip-new {
+	background: #fff0f0;
+	border-color: #d63638;
+	color: #8a2424;
+}
+
+.bfm-figure-chip-remove {
+	background: none;
+	border: none;
+	color: inherit;
+	cursor: pointer;
+	font-size: 13px;
+	line-height: 1;
+	padding: 0 2px;
+	opacity: 0.7;
+}
+
+.bfm-figure-chip-remove:hover {
+	opacity: 1;
+}
+
+.bfm-figure-chip-action {
+	background: none;
+	border: none;
+	color: inherit;
+	cursor: pointer;
+	font-size: 12px;
+	font-weight: 700;
+	line-height: 1;
+	padding: 0 1px;
+}
+
+.bfm-figure-chip-action:hover {
+	text-decoration: underline;
+}
+
+.bfm-figure-chip-input {
+	flex: 1 1 80px;
+	min-width: 80px;
+	border: none !important;
+	outline: none !important;
+	box-shadow: none !important;
+	background: transparent !important;
+	padding: 2px 4px !important;
+	margin: 0 !important;
+	font-size: 12px !important;
+	height: auto !important;
+}
+
+/* Card footer */
+.bfm-card-footer {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	margin-top: 14px;
+	padding-top: 12px;
+	border-top: 1px solid var(--bunny-border);
+}
+
+.bfm-card-save-status {
+	font-size: 12px;
+	font-weight: 600;
+	min-height: 18px;
+}
+
+.bfm-post-card .bfm-maintenance-save {
+	margin-left: auto;
+}
+
+/* Card Save States */
+.bfm-post-card.bfm-post-card-saving {
+	border-color: var(--bunny-accent);
+	opacity: 0.92;
+}
+
+.bfm-post-card.bfm-post-card-saved {
+	border-color: #46b450;
+	box-shadow: 0 0 0 2px rgba(70, 180, 80, 0.25), var(--bunny-shadow);
+	background: #fafffb;
+}
+
+.bfm-post-card.bfm-post-card-error {
+	border-color: #d63638;
+	box-shadow: 0 0 0 2px rgba(214, 54, 56, 0.2), var(--bunny-shadow);
+}
+
+/* Footer / Incremental Loading area */
+.bfm-post-maintenance-footer {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 12px;
+	margin-top: 24px;
+	min-height: 40px;
+}
+
+.bfm-post-maintenance-loading {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	color: var(--bunny-text-muted);
+	font-size: 13px;
+	font-weight: 500;
+	padding: 8px 16px;
+	background: rgba(108, 71, 255, 0.06);
+	border-radius: var(--bunny-radius-pill);
+}
+
+.bfm-post-maintenance-loading .spinner {
+	float: none;
+	margin: 0;
+	visibility: visible;
+}
+
+.bfm-post-maintenance-status {
+	margin: 0;
+	font-size: 13px;
+	min-height: 20px;
+	text-align: center;
+}
+
+.bfm-status-success {
+	color: #0a7d42;
+}
+
+.bfm-status-error {
+	color: #b32d2e;
+}
+
+/* ==========================================================================
    TAG asociado — selector, chip, autocomplete, states
    ========================================================================== */
 
@@ -363,6 +766,15 @@
 
 .bfm-image-source-row[hidden] {
 	display: none;
+}
+
+.bfm-character-identity-row {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	margin-top: 4px;
+	padding-top: 6px;
+	border-top: 1px dashed #dcdcde;
 }
 
 .bfm-inline-select {

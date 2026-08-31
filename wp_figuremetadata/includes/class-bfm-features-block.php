@@ -249,11 +249,12 @@ class BFM_Features_Block {
 
 			$raw_value = trim( (string) get_post_meta( $post_id, $meta_key, true ) );
 
-			if ( '' === $raw_value ) {
-				$value_html = esc_html( $settings['default'] );
-				if ( '' === $settings['default'] ) {
+			if ( '' === $raw_value || 'no dice' === strtolower( $raw_value ) ) {
+				$default = trim( (string) ( $settings['default'] ?? '' ) );
+				if ( '' === $default || 'no dice' === strtolower( $default ) ) {
 					continue;
 				}
+				$value_html = esc_html( $default );
 			} elseif ( in_array( $meta_key, $entity_meta_keys, true ) ) {
 				$value_html = $this->render_entity_value(
 					$raw_value,
@@ -263,6 +264,13 @@ class BFM_Features_Block {
 					$tag_links_by_meta_key[ $meta_key ] ?? array(),
 					$settings['link_target'] ?? 'tag'
 				);
+				if ( '' === $value_html ) {
+					$default = trim( (string) ( $settings['default'] ?? '' ) );
+					if ( '' === $default || 'no dice' === strtolower( $default ) ) {
+						continue;
+					}
+					$value_html = esc_html( $default );
+				}
 			} else {
 				$value_html = esc_html( $raw_value );
 			}
@@ -374,8 +382,7 @@ class BFM_Features_Block {
 
 		foreach ( $parts as $part ) {
 
-			if ( $excluded_value === strtolower( $part ) ) {
-				$rendered[] = esc_html( $part );
+			if ( $excluded_value === strtolower( $part ) || 'no dice' === strtolower( $part ) ) {
 				continue;
 			}
 

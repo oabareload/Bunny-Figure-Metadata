@@ -30,6 +30,7 @@ class BFM_Admin {
 	const MENU_SLUG = self::PAGE_PREFIX . 'manufacturers';
 	const SETTINGS_SLUG = self::PAGE_PREFIX . 'settings';
 	const FEATURES_SETTINGS_SLUG = self::PAGE_PREFIX . 'features-settings';
+	const POSTS_MAINTENANCE_SLUG = self::PAGE_PREFIX . 'posts';
 
 	/**
 	 * Build the admin page slug for a given entity slug.
@@ -117,6 +118,15 @@ class BFM_Admin {
 
 		add_submenu_page(
 			self::page_slug( $first_slug ),
+			__( 'Posts', 'bunny-figure-metadata' ),
+			__( 'Posts', 'bunny-figure-metadata' ),
+			'manage_options',
+			self::POSTS_MAINTENANCE_SLUG,
+			array( $this, 'render_posts_maintenance_page' )
+		);
+
+		add_submenu_page(
+			self::page_slug( $first_slug ),
 			__( 'Settings', 'bunny-figure-metadata' ),
 			__( 'Settings', 'bunny-figure-metadata' ),
 			'manage_options',
@@ -142,6 +152,15 @@ class BFM_Admin {
 			array(
 				'sanitize_callback' => array( $this, 'sanitize_metadata_settings' ),
 				'default'           => array(),
+			)
+		);
+
+		register_setting(
+			'bfm_metadata_settings',
+			BFM_Character_Identity::OPTION_NAME,
+			array(
+				'sanitize_callback' => array( 'BFM_Character_Identity', 'sanitize_settings' ),
+				'default'           => BFM_Character_Identity::default_settings(),
 			)
 		);
 
@@ -224,6 +243,85 @@ class BFM_Admin {
 		return $clean;
 	}
 
+	/** Render the post maintenance screen. */
+	public function render_posts_maintenance_page(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to view this page.', 'bunny-figure-metadata' ) );
+		}
+
+		$fields = BFM_Meta_Fields::all();
+		$args = array(
+			'post_type'      => 'post',
+			'post_status'    => array( 'publish', 'future', 'draft', 'pending', 'private' ),
+			'posts_per_page' => 20,
+			'paged'          => 1,
+			'orderby'        => 'ID',
+			'order'          => 'DESC',
+		);
+		$query = new WP_Query( $args );
+		$rows = '';
+		if ( $query->have_posts() ) {
+			while ( $query->have_posts() ) {
+				$query->the_post();
+				$rows .= BFM_Admin_Ajax::build_maintenance_row_for_post( get_post() );
+			}
+		}
+		wp_reset_postdata();
+		?>
+		<div class="wrap bunny-wrap bfm-admin-wrap bfm-posts-maintenance-wrap">
+			<?php BFM_Admin_Header::render( self::POSTS_MAINTENANCE_SLUG, __( 'Posts', 'bunny-figure-metadata' ) ); ?>
+			<div class="bunny-page-content bfm-page-content-full">
+				<div class="bfm-box bfm-maintenance-box">
+					<h2 class="bfm-box-title"><?php esc_html_e( 'Mantenimiento de posts', 'bunny-figure-metadata' ); ?></h2>
+					<form id="bfm-post-maintenance-filter-form" class="bfm-post-maintenance-filters">
+						<div class="bfm-post-maintenance-filter-grid">
+							<label>
+								<span><?php esc_html_e( 'Título', 'bunny-figure-metadata' ); ?></span>
+								<input type="text" id="bfm-post-maintenance-title" name="title" class="regular-text">
+							</label>
+							<label>
+								<span><?php esc_html_e( 'Metadato', 'bunny-figure-metadata' ); ?></span>
+								<select id="bfm-post-maintenance-meta-key" name="meta_key">
+									<option value=""><?php esc_html_e( 'Todos', 'bunny-figure-metadata' ); ?></option>
+									<?php foreach ( $fields as $meta_key => $field ) : ?>
+										<option value="<?php echo esc_attr( $meta_key ); ?>"><?php echo esc_html( $field['label'] ); ?></option>
+									<?php endforeach; ?>
+								</select>
+							</label>
+							<label>
+								<span><?php esc_html_e( 'Estado del valor', 'bunny-figure-metadata' ); ?></span>
+								<select id="bfm-post-maintenance-value-status" name="value_status">
+									<option value="all"><?php esc_html_e( 'Todos', 'bunny-figure-metadata' ); ?></option>
+									<option value="with"><?php esc_html_e( 'Con valor', 'bunny-figure-metadata' ); ?></option>
+									<option value="without"><?php esc_html_e( 'Sin valor', 'bunny-figure-metadata' ); ?></option>
+								</select>
+							</label>
+							<label>
+								<span><?php esc_html_e( 'Valor', 'bunny-figure-metadata' ); ?></span>
+								<input type="text" id="bfm-post-maintenance-value" name="value" class="regular-text">
+							</label>
+						</div>
+						<p class="submit"><button type="submit" class="button button-primary"><?php esc_html_e( 'Buscar', 'bunny-figure-metadata' ); ?></button></p>
+					</form>
+					<div class="bfm-post-cards-grid" id="bfm-post-maintenance-body">
+						<?php echo $rows; ?>
+					</div>
+					<div class="bfm-post-maintenance-footer">
+						<div class="bfm-post-maintenance-loading" id="bfm-post-maintenance-loading" style="display:none;" aria-live="polite">
+							<span class="spinner is-active"></span>
+							<span class="bfm-loading-text"><?php esc_html_e( 'Cargando posts...', 'bunny-figure-metadata' ); ?></span>
+						</div>
+						<p class="bfm-post-maintenance-status" id="bfm-post-maintenance-status" role="status" aria-live="polite"></p>
+						<button type="button" class="button" id="bfm-post-maintenance-load-more" style="display:none;">
+							<?php esc_html_e( 'Cargar más', 'bunny-figure-metadata' ); ?>
+						</button>
+					</div>
+				</div>
+			</div>
+		</div>
+		<?php
+	}
+
 	/** Render the global metadata settings screen. */
 	public function render_settings_page(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -280,6 +378,18 @@ class BFM_Admin {
 										</select>
 									</label>
 								</div>
+								<?php if ( BFM_Character_Identity::CHARACTER_META_KEY === $field['meta_key'] ) : $identity = BFM_Character_Identity::settings(); ?>
+									<div class="bfm-character-identity-row">
+										<div class="bfm-catalog-checks">
+											<label class="bfm-inline-check"><input type="checkbox" name="<?php echo esc_attr( BFM_Character_Identity::OPTION_NAME . '[identity_fields][]' ); ?>" value="series" <?php checked( in_array( 'series', $identity['identity_fields'], true ) ); ?>> <?php esc_html_e( 'Distinguir por Serie', 'bunny-figure-metadata' ); ?></label>
+											<label class="bfm-inline-check"><input type="checkbox" name="<?php echo esc_attr( BFM_Character_Identity::OPTION_NAME . '[identity_fields][]' ); ?>" value="illustrator" <?php checked( in_array( 'illustrator', $identity['identity_fields'], true ) ); ?>> <?php esc_html_e( 'Distinguir por Ilustrador (si Serie = personaje original)', 'bunny-figure-metadata' ); ?></label>
+										</div>
+										<label class="bfm-inline-select">
+											<span><?php esc_html_e( 'Valor de "personaje original"', 'bunny-figure-metadata' ); ?></span>
+											<input type="text" class="regular-text" name="<?php echo esc_attr( BFM_Character_Identity::OPTION_NAME . '[original_value]' ); ?>" value="<?php echo esc_attr( $identity['original_value'] ); ?>">
+										</label>
+									</div>
+								<?php endif; ?>
 							</div></td>
 						</tr>
 					<?php endforeach; ?>
@@ -480,6 +590,12 @@ class BFM_Admin {
 		$total_pages = $result['total_pages'];
 		$paged       = max( 1, min( $paged, max( 1, $total_pages ) ) );
 
+		// $value stays the raw identity key (character) for matching/pagination
+		// links; $display_value is only ever used to label the heading.
+		$display_value = ( BFM_Character_Identity::CHARACTER_META_KEY === $entity['meta_key'] )
+			? BFM_Character_Identity::display_name( $value )
+			: $value;
+
 		$view_file = BFM_PATH . 'admin/views/entity-posts.php';
 
 		if ( ! file_exists( $view_file ) ) {
@@ -634,6 +750,51 @@ class BFM_Admin {
 				array( 'jquery' ),
 				BFM_VERSION,
 				true
+			);
+		}
+
+		if ( false !== strpos( $hook, self::POSTS_MAINTENANCE_SLUG ) ) {
+			wp_enqueue_script(
+				'bfm-post-editor-chips',
+				BFM_URL . 'assets/js/post-editor-chips.js',
+				array( 'jquery' ),
+				BFM_VERSION,
+				true
+			);
+			wp_localize_script(
+				'bfm-post-editor-chips',
+				'BFM_POST_EDITOR_CHIPS',
+				array(
+					'suggestions' => BFM_Post_Editor::get_entity_suggestions(),
+					'i18n'        => array(
+						'remove' => __( 'Quitar', 'bunny-figure-metadata' ),
+					),
+				)
+			);
+			wp_enqueue_script(
+				'bfm-post-metadata-maintenance',
+				BFM_URL . 'assets/js/post-metadata-maintenance.js',
+				array( 'jquery' ),
+				BFM_VERSION,
+				true
+			);
+			wp_localize_script(
+				'bfm-post-metadata-maintenance',
+				'BFM_POST_MAINTENANCE',
+				array(
+					'ajaxUrl'     => admin_url( 'admin-ajax.php' ),
+					'nonce'       => wp_create_nonce( 'bfm_post_metadata' ),
+					'loadAction'  => 'bfm_load_post_metadata_rows',
+					'saveAction'  => 'bfm_save_post_metadata',
+					'i18n'        => array(
+						'saved'      => __( 'Guardado', 'bunny-figure-metadata' ),
+						'saving'     => __( 'Guardando...', 'bunny-figure-metadata' ),
+						'loading'    => __( 'Cargando posts...', 'bunny-figure-metadata' ),
+						'error'      => __( 'No se pudo guardar.', 'bunny-figure-metadata' ),
+						'load_error' => __( 'No se pudieron cargar los posts.', 'bunny-figure-metadata' ),
+						'no_posts'   => __( 'No se encontraron posts.', 'bunny-figure-metadata' ),
+					),
+				)
 			);
 		}
 

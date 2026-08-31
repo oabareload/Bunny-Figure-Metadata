@@ -112,6 +112,10 @@ class BFM_Post_Editor {
 				true
 			);
 
+			if ( 'no dice' === strtolower( trim( (string) $value ) ) ) {
+				$value = '';
+			}
+
 			$is_tag_source = in_array(
 				$meta_key,
 				$tag_fields,
@@ -231,28 +235,68 @@ class BFM_Post_Editor {
 				continue;
 			}
 
-			$value = sanitize_text_field(
-				wp_unslash(
-					$_POST[ $meta_key ]
-				)
-			);
-
-			if ( '' === $value ) {
-
-				delete_post_meta(
-					$post_id,
-					$meta_key
-				);
-
-			} else {
-
-				update_post_meta(
-					$post_id,
-					$meta_key,
-					$value
-				);
-			}
+			self::save_meta_value_for_post( $post_id, $meta_key, $_POST[ $meta_key ] );
 		}
+	}
+
+	/**
+	 * Sanitize one metadata value using the same logic already used by the
+	 * post editor, while preserving the plugin's multi-value format for
+	 * entity fields.
+	 *
+	 * @param string $meta_key Source meta key.
+	 * @param mixed  $raw_value Raw submitted value.
+	 * @return string
+	 */
+	public static function sanitize_meta_value_for_storage( string $meta_key, $raw_value ): string {
+		$field = BFM_Meta_Fields::all()[ $meta_key ] ?? null;
+		if ( ! is_array( $field ) ) {
+			return '';
+		}
+
+		$value = is_scalar( $raw_value ) ? (string) $raw_value : '';
+		$value = wp_unslash( $value );
+
+		if ( ! empty( $field['entity'] ) ) {
+			$parts = array();
+			foreach ( preg_split( '/\s*&\s*/', $value ) as $part ) {
+				$clean = trim( sanitize_text_field( $part ) );
+				if ( '' !== $clean && 'no dice' !== strtolower( $clean ) ) {
+					$parts[] = $clean;
+				}
+			}
+			return implode( ' & ', $parts );
+		}
+
+		$clean = sanitize_text_field( $value );
+		if ( 'no dice' === strtolower( trim( $clean ) ) ) {
+			return '';
+		}
+
+		return $clean;
+	}
+
+	/**
+	 * Save one meta key through the plugin's existing storage path, without
+	 * bypassing its sanitization rules.
+	 *
+	 * @param int    $post_id Post ID.
+	 * @param string $meta_key Meta key.
+	 * @param mixed  $raw_value Raw value.
+	 * @return bool
+	 */
+	public static function save_meta_value_for_post( int $post_id, string $meta_key, $raw_value ): bool {
+		if ( ! current_user_can( 'edit_post', $post_id ) ) {
+			return false;
+		}
+
+		$value = self::sanitize_meta_value_for_storage( $meta_key, $raw_value );
+
+		if ( '' === $value ) {
+			return delete_post_meta( $post_id, $meta_key );
+		}
+
+		return (bool) update_post_meta( $post_id, $meta_key, $value );
 	}
 
 	/**
@@ -292,7 +336,7 @@ class BFM_Post_Editor {
 			'bfm-post-editor-chips',
 			'BFM_POST_EDITOR_CHIPS',
 			array(
-				'suggestions' => $this->get_entity_suggestions(),
+				'suggestions' => self::get_entity_suggestions(),
 				'i18n'        => array(
 					'remove' => __( 'Quitar', 'bunny-figure-metadata' ),
 				),
@@ -310,12 +354,24 @@ class BFM_Post_Editor {
 	 *
 	 * @return array<string, array<int, string>> meta_key => value names.
 	 */
-	private function get_entity_suggestions(): array {
+	public static function get_entity_suggestions(): array {
 
 		$suggestions = array();
 
 		foreach ( BFM_Meta_Fields::entity_sources() as $meta_key ) {
-			$suggestions[ $meta_key ] = array_keys( BFM_Entity_Repository::get_values_with_counts( $meta_key ) );
+
+			$keys = array_keys( BFM_Entity_Repository::get_values_with_counts( $meta_key ) );
+
+			// For character, get_values_with_counts() groups by the internal
+			// identity key (BFM_Character_Identity) so two same-named
+			// characters aren't merged; the chip editor only ever needs the
+			// plain name for autocomplete/duplicate-detection, so reduce back
+			// to unique display names via the same shared helper.
+			if ( BFM_Character_Identity::CHARACTER_META_KEY === $meta_key ) {
+				$keys = array_values( array_unique( array_map( array( 'BFM_Character_Identity', 'display_name' ), $keys ) ) );
+			}
+
+			$suggestions[ $meta_key ] = $keys;
 		}
 
 		return $suggestions;

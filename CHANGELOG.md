@@ -4,6 +4,34 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [1.3.0] - 2026-08-30
+
+### Añadido
+
+- Nueva pantalla **Posts** dentro de Figure Metadata para consultar y editar los metadatos BFM de los posts desde una sola interfaz.
+- Búsqueda por título, metadato, estado del valor y valor concreto con carga inicial limitada a 20 posts y carga progresiva por AJAX/infinite scroll.
+- Guardado AJAX por fila con validación de `post_id`, `current_user_can( 'edit_post', $post_id )`, nonce y reutilización de la sanitización de `BFM_Post_Editor` para todos los metadatos configurados.
+- Los campos de catálogo reutilizan la experiencia de chips del editor para mantener el formato multi-valor `A & B` y actualizar las filas sin recargar la página.
+
+### Corregido
+
+- La consulta de valor vacío distingue `NOT EXISTS` de `valor vacío` usando `WP_Meta_Query`, sin SQL manual ni cambios de almacenamiento.
+
+## [1.2.0] - 2026-08-30
+
+### Añadido
+
+- **Identidad compuesta para `character`**: dos figuras pueden compartir el mismo nombre de personaje (p. ej. `Eve`) y referirse a personajes distintos (`Eve` de *Stellar Blade* vs. un `Eve` original ilustrado por `rurudo`). El plugin ahora puede distinguirlos internamente sin cambiar el nombre mostrado, que sigue siendo simplemente `Eve`.
+- Nueva sección en Settings, solo en la fila de **Personaje**: dos checkboxes ("Distinguir por Serie" / "Distinguir por Ilustrador") y un campo de texto para el valor que representa "personaje original" (por defecto `PERSONAJE ORIGINAL`, comparado sin distinguir mayúsculas ni espacios).
+- Regla de identidad (fija, aplicada solo a `character`): `personaje + serie`; y cuando la serie coincide con el valor de "personaje original", también `+ ilustrador`. Ejemplo: `Eve + Stellar Blade` es una identidad distinta de `Eve + PERSONAJE ORIGINAL + rurudo`.
+- `BFM_Character_Identity` (nueva clase, exclusiva de `character`): único lugar que construye (`build_identity_key()`) y desarma (`display_name()`) esa identidad interna (p. ej. `Eve|Stellar Blade`). No crea tablas, IDs ni migra metadata existente; la clave se calcula al vuelo a partir de la metadata ya guardada.
+- La identidad compuesta ahora se usa consistentemente en `character`: conteo y agrupación de valores, listado de posts relacionados (drill-down), y **selección de imagen** (automática y manual) — una imagen asociada a `Eve + Stellar Blade` nunca se confunde con `Eve + PERSONAJE ORIGINAL + rurudo`. TAG y URL asociados siguen funcionando exactamente igual que antes (por el nombre plano del personaje), sin cambios.
+- El bloque **Entidades destacadas** y el editor de metadata (chips) se actualizaron para seguir mostrando siempre el nombre plano del personaje, nunca la clave interna.
+
+### Alcance
+
+- Ningún otro metadato (`manufacturer`, `illustrator`, `series`, etc.) se ve afectado; el comportamiento de `character` sin cambios de configuración adicionales (ambos checkboxes activados por defecto) reproduce exactamente la regla descrita arriba.
+
 ## [1.1.1] - 2026-08-29
 
 ### Corregido

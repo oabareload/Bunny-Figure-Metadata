@@ -59,6 +59,88 @@ class BFM_Entity_Repository {
 	}
 
 	/**
+	 * Per-request cache for character_identity_context(), so that
+	 * get_values_with_counts(), get_matching_post_ids() and
+	 * get_related_image_attachment_ids() can each call it freely on the
+	 * same request (e.g. rendering the Personajes admin screen) without
+	 * re-running the two extra queries it needs more than once.
+	 *
+	 * @var array<string, array{0: array<int,string>, 1: array<int,string>}>
+	 */
+	private static array $character_identity_context_cache = array();
+
+	/**
+	 * For the character meta key only, resolve every post's Series and
+	 * Illustrator raw values (needed to build each character occurrence's
+	 * identity key). Reuses raw_meta_rows() — the same query already used
+	 * everywhere else in this class — for both fields, so no new SQL is
+	 * introduced. For any other meta key, returns two empty maps
+	 * immediately (zero extra queries).
+	 *
+	 * @param string $meta_key Meta key being resolved by the caller.
+	 * @return array{0: array<int,string>, 1: array<int,string>} [ post_id => series value, post_id => illustrator value ]
+	 */
+	private static function character_identity_context( string $meta_key ): array {
+
+		if ( BFM_Character_Identity::CHARACTER_META_KEY !== $meta_key ) {
+			return array( array(), array() );
+		}
+
+		if ( ! isset( self::$character_identity_context_cache[ $meta_key ] ) ) {
+
+			$series_by_post      = array();
+			$illustrator_by_post = array();
+
+			foreach ( self::raw_meta_rows( BFM_Character_Identity::SERIES_META_KEY ) as $row ) {
+				$post_id = (int) $row->post_id;
+				if ( ! isset( $series_by_post[ $post_id ] ) ) {
+					$series_by_post[ $post_id ] = trim( (string) $row->meta_value );
+				}
+			}
+
+			foreach ( self::raw_meta_rows( BFM_Character_Identity::ILLUSTRATOR_META_KEY ) as $row ) {
+				$post_id = (int) $row->post_id;
+				if ( ! isset( $illustrator_by_post[ $post_id ] ) ) {
+					$illustrator_by_post[ $post_id ] = trim( (string) $row->meta_value );
+				}
+			}
+
+			self::$character_identity_context_cache[ $meta_key ] = array( $series_by_post, $illustrator_by_post );
+		}
+
+		return self::$character_identity_context_cache[ $meta_key ];
+	}
+
+	/**
+	 * Resolve the effective grouping/matching key for one occurrence of a
+	 * value within a meta field's raw row: for `_bunny_figure_character`,
+	 * the composite identity key (BFM_Character_Identity::build_identity_key(),
+	 * the single place that builds it); for every other meta key, the bare
+	 * trimmed name, exactly as before. Shared by get_values_with_counts(),
+	 * get_matching_post_ids() and get_related_image_attachment_ids() so
+	 * this per-row resolution exists in exactly one place.
+	 *
+	 * @param string $meta_key            Meta key being resolved.
+	 * @param string $name                Trimmed value name for this occurrence.
+	 * @param int    $post_id             Post the occurrence came from.
+	 * @param array<int,string> $series_by_post      Post ID => Series value (character only).
+	 * @param array<int,string> $illustrator_by_post Post ID => Illustrator value (character only).
+	 * @return string
+	 */
+	private static function value_key( string $meta_key, string $name, int $post_id, array $series_by_post, array $illustrator_by_post ): string {
+
+		if ( BFM_Character_Identity::CHARACTER_META_KEY !== $meta_key ) {
+			return $name;
+		}
+
+		return BFM_Character_Identity::build_identity_key(
+			$name,
+			$series_by_post[ $post_id ] ?? '',
+			$illustrator_by_post[ $post_id ] ?? ''
+		);
+	}
+
+	/**
 	 * Get unique values and post counts for a given meta key.
 	 *
 	 * @param string $meta_key Post meta key to read (e.g. _bunny_figure_manufacturer).
@@ -78,6 +160,8 @@ class BFM_Entity_Repository {
 		$separator      = BFM_Meta_Fields::value_separator();
 		$excluded_value = BFM_Meta_Fields::excluded_value();
 
+		list( $series_by_post, $illustrator_by_post ) = self::character_identity_context( $meta_key );
+
 		foreach ( $rows as $row ) {
 
 			$names = explode( $separator, (string) $row->meta_value );
@@ -94,11 +178,13 @@ class BFM_Entity_Repository {
 					continue;
 				}
 
-				if ( ! isset( $counts[ $name ] ) ) {
-					$counts[ $name ] = 0;
+				$key = self::value_key( $meta_key, $name, (int) $row->post_id, $series_by_post, $illustrator_by_post );
+
+				if ( ! isset( $counts[ $key ] ) ) {
+					$counts[ $key ] = 0;
 				}
 
-				++$counts[ $name ];
+				++$counts[ $key ];
 			}
 		}
 
@@ -253,6 +339,8 @@ class BFM_Entity_Repository {
 		$separator      = BFM_Meta_Fields::value_separator();
 		$excluded_value = BFM_Meta_Fields::excluded_value();
 
+		list( $series_by_post, $illustrator_by_post ) = self::character_identity_context( $meta_key );
+
 		$first_post_id_by_value = array();
 
 		foreach ( $rows as $row ) {
@@ -264,10 +352,12 @@ class BFM_Entity_Repository {
 					continue;
 				}
 
+				$key = self::value_key( $meta_key, $name, (int) $row->post_id, $series_by_post, $illustrator_by_post );
+
 				// Rows are already ordered by post_date ASC, so the first time a
-				// value is seen is its oldest related post.
-				if ( ! isset( $first_post_id_by_value[ $name ] ) ) {
-					$first_post_id_by_value[ $name ] = (int) $row->post_id;
+				// key is seen is its oldest related post.
+				if ( ! isset( $first_post_id_by_value[ $key ] ) ) {
+					$first_post_id_by_value[ $key ] = (int) $row->post_id;
 				}
 			}
 		}
@@ -364,11 +454,21 @@ class BFM_Entity_Repository {
 		$separator = BFM_Meta_Fields::value_separator();
 		$post_ids  = array();
 
+		list( $series_by_post, $illustrator_by_post ) = self::character_identity_context( $meta_key );
+
 		foreach ( $rows as $row ) {
 
 			foreach ( explode( $separator, (string) $row->meta_value ) as $name ) {
 
-				if ( $value === trim( $name ) ) {
+				$name = trim( $name );
+
+				if ( '' === $name ) {
+					continue;
+				}
+
+				$key = self::value_key( $meta_key, $name, (int) $row->post_id, $series_by_post, $illustrator_by_post );
+
+				if ( $value === $key ) {
 					$post_ids[] = (int) $row->post_id;
 					break;
 				}

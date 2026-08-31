@@ -316,7 +316,12 @@ class BFM_Featured_Entities_Block {
 
 		foreach ( $top_names as $name ) {
 			$entities[ $name ] = array(
-				'name'     => $name,
+				// $name (the array key) stays the raw value used to look up TAG/logo
+				// data below; 'name' is what actually gets rendered, and must be the
+				// plain character name — never the internal identity key — for
+				// character (BFM_Character_Identity::display_name(), the same helper
+				// used by the admin screens).
+				'name'     => ( BFM_Character_Identity::CHARACTER_META_KEY === $meta_key ) ? BFM_Character_Identity::display_name( $name ) : $name,
 				'count'    => $values[ $name ],
 				'term_id'  => 0,
 				'tag_url'  => '',
@@ -353,11 +358,13 @@ class BFM_Featured_Entities_Block {
 	private function attach_tag_urls( array &$entities, string $meta_key ): void {
 
 		$tag_map = BFM_Entity_Tag_Map::get_for_meta_key( $meta_key );
+		$is_character = ( BFM_Character_Identity::CHARACTER_META_KEY === $meta_key );
 
 		$term_ids = array();
 
 		foreach ( $entities as $name => $entity ) {
-			$term_id = isset( $tag_map[ $name ] ) ? absint( $tag_map[ $name ] ) : 0;
+			$tag_lookup_name = $is_character ? BFM_Character_Identity::display_name( $name ) : $name;
+			$term_id = isset( $tag_map[ $tag_lookup_name ] ) ? absint( $tag_map[ $tag_lookup_name ] ) : 0;
 			if ( $term_id > 0 ) {
 				$term_ids[] = $term_id;
 			}
@@ -389,7 +396,8 @@ class BFM_Featured_Entities_Block {
 
 		foreach ( $entities as $name => &$entity ) {
 
-			$term_id = isset( $tag_map[ $name ] ) ? absint( $tag_map[ $name ] ) : 0;
+			$tag_lookup_name = $is_character ? BFM_Character_Identity::display_name( $name ) : $name;
+			$term_id = isset( $tag_map[ $tag_lookup_name ] ) ? absint( $tag_map[ $tag_lookup_name ] ) : 0;
 
 			if ( ! $term_id || ! isset( $terms_by_id[ $term_id ] ) ) {
 				continue;

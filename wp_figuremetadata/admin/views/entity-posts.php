@@ -9,7 +9,8 @@
  * Variables available (set by BFM_Admin::render_entity_posts_page()):
  *   string                $slug        Entity slug.
  *   array<string,string>  $entity      Entity definition (label, meta_key).
- *   string                $value       Exact entity value being filtered by.
+ *   string                $value       Exact entity value being filtered by (identity key for character).
+ *   string                $display_value Value as shown to the user (plain character name for character; same as $value otherwise).
  *   array<int,array>      $rows        Display-ready post rows (see BFM_Admin::build_post_row()).
  *   int                   $total       Total matching posts.
  *   int                   $total_pages Total number of pages.
@@ -42,7 +43,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 						/* translators: 1: entity label, e.g. "Fabricante". 2: entity value, e.g. "Good Smile Company". */
 						__( '%1$s: %2$s', 'bunny-figure-metadata' ),
 						$entity['label'],
-						$value
+						$display_value
 					)
 				);
 				?>

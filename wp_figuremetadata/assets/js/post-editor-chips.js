@@ -28,23 +28,51 @@
 		return;
 	}
 
+	window.BFM_POST_EDITOR_CHIPS = window.BFM_POST_EDITOR_CHIPS || {};
+	window.BFM_POST_EDITOR_CHIPS.initField = window.BFM_POST_EDITOR_CHIPS.initField || function (field) {
+		if (!field || $(field).data('bfm-chip-bound')) {
+			return;
+		}
+		$(field).data('bfm-chip-bound', true);
+		initField.call(field);
+	};
+	window.BFM_POST_EDITOR_CHIPS.initPage = function ($context) {
+		var $scope = $context || $(document);
+		$scope.find('.bfm-figure-chip-field').each(function () {
+			if (!$(this).data('bfm-chip-bound')) {
+				$(this).data('bfm-chip-bound', true);
+				initField.call(this);
+			}
+		});
+	};
+
 	// Committers for every chip field on the page, so a page-level "about
 	// to save" safety net can flush all of them at once.
 	var pendingCommitters = [];
+
+	function isExcluded(val) {
+		var str = String(typeof val === 'string' ? val : (val && val.name ? val.name : (val || ''))).trim().toLowerCase();
+		return !str || str === 'no dice';
+	}
 
 	function parseValues(raw) {
 		return String(raw || '')
 			.split('&')
 			.map(function (part) { return $.trim(part); })
-			.filter(function (part) { return part.length > 0; });
+			.filter(function (part) { return part.length > 0 && !isExcluded(part); });
 	}
 
 	function serializeValues(values) {
-		return values.map(function (value) { return value.name; }).join(' & ');
+		return values
+			.filter(function (value) { return value && !isExcluded(value.name); })
+			.map(function (value) { return String(value.name || '').trim(); })
+			.filter(function (name) { return name.length > 0; })
+			.join(' & ');
 	}
 
 	function normalizeValue(value) {
-		return String(value || '')
+		var str = String(typeof value === 'string' ? value : (value && value.name ? value.name : (value || '')));
+		return str
 			.toLowerCase()
 			.normalize('NFD')
 			.replace(/[\u0300-\u036f]/g, '')
@@ -123,12 +151,17 @@
 	function findPossibleMatch(name, catalog) {
 		var best = null;
 		var bestScore = 0;
+		var target = String(name || '');
 
 		catalog.forEach(function (candidate) {
-			var score = similarity(name, candidate);
+			var candStr = String(candidate || '');
+			if (isExcluded(candStr)) {
+				return;
+			}
+			var score = similarity(target, candStr);
 
 			if (score >= 0.82 && score > bestScore) {
-				best = candidate;
+				best = candStr;
 				bestScore = score;
 			}
 		});
@@ -143,19 +176,28 @@
 		var $list = $field.find('.bfm-figure-chip-list');
 		var $input = $field.find('.bfm-figure-chip-input');
 
-		var suggestions = (BFM_POST_EDITOR_CHIPS.suggestions && BFM_POST_EDITOR_CHIPS.suggestions[metaKey]) || [];
+		var rawSuggestions = (BFM_POST_EDITOR_CHIPS.suggestions && BFM_POST_EDITOR_CHIPS.suggestions[metaKey]) || [];
+		var suggestions = Array.isArray(rawSuggestions)
+			? rawSuggestions.map(function (s) { return String(s || ''); }).filter(function (s) { return !isExcluded(s); })
+			: [];
 		var catalog = suggestions.slice();
 		var values = [];
 
 		function containsValue(name) {
-			var needle = name.toLowerCase();
-			return values.some(function (value) { return value.name.toLowerCase() === needle; });
+			var needle = String(typeof name === 'string' ? name : (name && name.name ? name.name : (name || ''))).toLowerCase();
+			return values.some(function (value) {
+				var valName = String(typeof value === 'string' ? value : (value && value.name ? value.name : (value || ''))).toLowerCase();
+				return valName === needle;
+			});
 		}
 
 		function render() {
 			$list.empty();
 
 			$.each(values, function (index, value) {
+				if (!value || isExcluded(value.name)) {
+					return;
+				}
 				var $chip = $('<span class="bfm-figure-chip"></span>')
 					.addClass('bfm-figure-chip-' + value.state)
 					.attr('title', value.possible ? 'Posible coincidencia: ' + value.possible : '');
@@ -187,7 +229,7 @@
 					.attr('title', BFM_POST_EDITOR_CHIPS.i18n.remove + ': ' + value.name);
 
 				$remove.on('click', function () {
-						values.splice(index, 1);
+					values.splice(index, 1);
 					render();
 				});
 
@@ -199,17 +241,18 @@
 		}
 
 		function addValue(rawName) {
-			var name = $.trim(rawName);
+			var name = $.trim(typeof rawName === 'string' ? rawName : (rawName && rawName.name ? rawName.name : String(rawName || '')));
 			var existing = null;
 			var possible = null;
 
-			if (!name) {
+			if (!name || isExcluded(name)) {
 				return;
 			}
 
 			for (var i = 0; i < catalog.length; i++) {
-				if (normalizeValue(catalog[i]) === normalizeValue(name)) {
-					existing = catalog[i];
+				var cand = String(catalog[i] || '');
+				if (normalizeValue(cand) === normalizeValue(name)) {
+					existing = cand;
 					break;
 				}
 			}
@@ -218,15 +261,16 @@
 				possible = findPossibleMatch(name, catalog);
 			}
 
-			if (!containsValue(existing || name)) {
+			var chosen = existing || name;
+			if (!containsValue(chosen)) {
 				values.push({
-					name: existing || name,
+					name: chosen,
 					state: existing ? 'existing' : (possible ? 'possible' : 'new'),
 					possible: possible
 				});
 
 				if (!existing) {
-					suggestions.push(name);
+					suggestions.push(chosen);
 				}
 
 				render();

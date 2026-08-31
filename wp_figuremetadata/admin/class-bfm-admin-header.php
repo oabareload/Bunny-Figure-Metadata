@@ -44,6 +44,12 @@ class BFM_Admin_Header {
 					</a>
 				<?php endforeach; ?>
 				<a
+					href="<?php echo esc_url( admin_url( 'admin.php?page=' . BFM_Admin::POSTS_MAINTENANCE_SLUG ) ); ?>"
+					class="bunny-nav-item<?php echo BFM_Admin::POSTS_MAINTENANCE_SLUG === $current_slug ? ' bunny-nav-active' : ''; ?>"
+				>
+					<?php esc_html_e( 'Posts', 'bunny-figure-metadata' ); ?>
+				</a>
+				<a
 					href="<?php echo esc_url( admin_url( 'admin.php?page=' . BFM_Admin::SETTINGS_SLUG ) ); ?>"
 					class="bunny-nav-item<?php echo BFM_Admin::SETTINGS_SLUG === $current_slug ? ' bunny-nav-active' : ''; ?>"
 				>

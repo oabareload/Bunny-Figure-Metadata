@@ -301,12 +301,16 @@
 		// search (title/caption/alt/description), seeded with the exact
 		// metadata value (e.g. "Hatsune Miku") so relevant images surface
 		// first without introducing any new indexing or taxonomy.
-		var searchTerm = String($cell.data('value') || '');
+		// data-display-name is the plain value the user sees (for character,
+		// data-value is instead an internal identity key used to keep two
+		// same-named characters' images apart, and would make a poor search
+		// term); every other entity's data-display-name is just its value.
+		var searchTerm = String($cell.data('display-name') || $cell.data('value') || '');
 
 		var frame = wp.media({
 			title: BFM_ENTITY_INFO.i18n.selectImage,
 			button: { text: BFM_ENTITY_INFO.i18n.useImage },
-			library: { type: 'image', search: searchTerm },
+			library: { type: 'image', s: searchTerm },
 			multiple: false
 		});
 

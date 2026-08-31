@@ -69,6 +69,7 @@ class BFM_Core {
 	private function load_dependencies(): void {
 
 		require_once BFM_PATH . 'includes/class-bfm-meta-fields.php';
+		require_once BFM_PATH . 'includes/class-bfm-character-identity.php';
 		require_once BFM_PATH . 'includes/class-bfm-post-editor.php';
 		require_once BFM_PATH . 'includes/class-bfm-tag-sync.php';
 		require_once BFM_PATH . 'includes/class-bfm-entity-repository.php';
@@ -98,6 +99,7 @@ class BFM_Core {
 	 */
 	private function register_hooks(): void {
 		add_action( 'init', array( 'BFM_Meta_Fields', 'maybe_migrate' ), 1 );
+		add_action( 'init', array( 'BFM_Character_Identity', 'maybe_migrate' ), 1 );
 
 		// ── Post editor metadata (metabox, register_post_meta, save) ──────────
 		if ( class_exists( 'BFM_Post_Editor' ) ) {

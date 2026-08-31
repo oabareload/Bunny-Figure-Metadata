@@ -4,7 +4,7 @@ Plugin de WordPress, independiente y autónomo, para administrar la metadata est
 
 ## Estado
 
-Versión 1.1.1. Configuración global de metadatos + alta de nuevos metadatos + catálogos dinámicos + editor de metadata basado en chips de entidad + asociación de cada valor de entidad con un TAG de WordPress + información complementaria (URL y logo, con origen de imagen configurable por metadato: personalizado o desde un post relacionado) por entidad + listado de posts asociados a cada valor de entidad + sincronización de TAGs únicamente al publicar/programar + bloque dinámico de Gutenberg para mostrar las características de la figura con configuración global para todos los metadatos + valor por defecto configurable por campo en Features + enlace a TAG o enlace externo configurable por campo + bloque dinámico de Gutenberg con caché para mostrar un ranking compacto de entidades destacadas (pensado para el footer). No hay Bunny Score, cards, merge de entidades ni panel de salud en esta fase.
+Versión 1.3.0. Configuración global de metadatos + alta de nuevos metadatos + catálogos dinámicos + editor de metadata basado en chips de entidad + asociación de cada valor de entidad con un TAG de WordPress + información complementaria (URL y logo, con origen de imagen configurable por metadato: personalizado o desde un post relacionado) por entidad + **identidad compuesta para Personaje** (distingue personajes homónimos por Serie/Ilustrador, solo para la resolución de imágenes y el conteo/agrupación de ese metadato) + listado de posts asociados a cada valor de entidad + mantenimiento administrativo de posts con filtros, carga por AJAX y edición directa de todos los metadatos BFM + sincronización de TAGs únicamente al publicar/programar + bloque dinámico de Gutenberg para mostrar las características de la figura con configuración global para todos los metadatos + valor por defecto configurable por campo en Features + enlace a TAG o enlace externo configurable por campo + bloque dinámico de Gutenberg con caché para mostrar un ranking compacto de entidades destacadas (pensado para el footer). No hay Bunny Score, cards, merge de entidades ni panel de salud en esta fase.
 
 ## ¿Qué hace?
 
@@ -45,10 +45,14 @@ Los campos marcados como catálogo se editan como **chips individuales** en luga
 - Si el texto escrito coincide (sin distinguir mayúsculas/minúsculas) con un valor existente, se reutiliza exactamente ese texto tal cual está guardado.
 - Si no coincide con ninguno, se puede añadir igualmente como un valor nuevo.
 - Los chips verdes son entidades existentes; los naranjas son posibles coincidencias y permiten aceptar (`✓`) o rechazar (`↶`) la sugerencia; los rojos son valores nuevos.
+
 - Internamente, el valor se sigue guardando como el mismo texto plano separado por `&` de siempre (`"Good Smile Company & Flare"`) en un input oculto — el formato de almacenamiento no cambió, solo la forma de editarlo.
 
-### 3. Sincronización metadata → TAGs (solo al publicar o programar)
+### 3. Mantenimiento administrativo de posts
 
+En **Figure Metadata > Posts** se dispone de una interfaz de mantenimiento para consultar y editar todos los metadatos BFM de los posts desde una sola tabla. La lista carga los primeros 20 posts y sigue cargando más por AJAX/infinite scroll, con filtros combinables por título, metadato, estado del valor y valor concreto. Cada fila muestra el ID, el título y un control editable por campo, y el guardado se hace por AJAX con comprobación de nonce y permisos del usuario sobre cada post.
+
+### 4. Sincronización metadata → TAGs (solo al publicar o programar)
 Los metadatos marcados como catálogo se sincronizan con los tags (`post_tag`) del post. Inicialmente son Fabricante, Ilustrador, Serie y Personaje:
 
 - Los valores múltiples dentro de un mismo campo se separan con `&` (no con coma), y cada uno se convierte en un tag independiente.
@@ -76,6 +80,15 @@ Cada sección recorre la metadata existente de los posts publicados y muestra lo
 
 Las columnas **Nombre** y **Posts** son ordenables (ascendente/descendente) mediante los encabezados de la tabla; el orden se refleja en la URL (`orderby`, `order`) y se mantiene al recargar.
 
+#### Identidad compuesta para Personaje (nuevo en 1.2.0)
+
+Un mismo nombre de personaje puede corresponder a personajes distintos (p. ej. `Eve` de *Stellar Blade* frente a un `Eve` original ilustrado por `rurudo`). Esto se resuelve **solo para `_bunny_figure_character`**, sin tocar Fabricante, Ilustrador ni Serie, sin tabla nueva, sin ID nuevo y sin migrar la metadata existente:
+
+- En **Figure Metadata > Settings**, la fila de **Personaje** tiene dos checkboxes adicionales ("Distinguir por Serie" / "Distinguir por Ilustrador", ambos activados por defecto) y un campo de texto para el valor que representa "personaje original" (por defecto `PERSONAJE ORIGINAL`; la comparación no distingue mayúsculas/minúsculas ni espacios).
+- Regla fija: la identidad interna de cada aparición de un personaje es `personaje + serie` de ese mismo post; si además esa serie coincide con el valor de "personaje original", también se añade `+ ilustrador`. Así, `Eve + Stellar Blade` y `Eve + PERSONAJE ORIGINAL + rurudo` son identidades distintas, aunque ambas se sigan mostrando simplemente como `Eve`.
+- Esta identidad interna (p. ej. `Eve|Stellar Blade`) la construye una única función (`BFM_Character_Identity::build_identity_key()`) y es lo que se usa para **contar y agrupar** valores de Personaje, para el **listado de posts relacionados** (punto 7) y para la **selección de imagen** (punto 6): dos personajes homónimos pueden tener conteos, posts relacionados e imágenes completamente independientes. El **TAG** y la **URL** asociados a Personaje siguen funcionando exactamente igual que antes, por el nombre plano — no se ven afectados por esta identidad.
+- Si se desactivan ambos checkboxes, el comportamiento de Personaje vuelve a ser idéntico al de cualquier otra entidad (agrupado solo por el nombre plano).
+
 ### 5. Asociación de entidad → TAG
 
 Cada valor de entidad (por ejemplo, "Good Smile Company" en Fabricantes) puede asociarse con **un único TAG** de WordPress mediante un selector con autocompletado:
@@ -98,7 +111,7 @@ Cada valor de entidad puede tener también:
 
 Ambos datos pertenecen a la *entidad* (al valor de metadata), no a ningún post en particular, y se administran igual que la asociación de TAG: sin tabla nueva, guardado inmediato, independientes entre sí para cada valor `&`-separado.
 
-**Nota de diseño:** tanto la asociación de TAG como la de URL/logo se identifican por el nombre textual del valor de entidad (p. ej. "Good Smile Company"). Esto es coherente con que la metadata de texto sigue siendo la fuente de verdad: no existe todavía un identificador de entidad independiente del texto.
+**Nota de diseño:** tanto la asociación de TAG como la de URL/logo se identifican por el nombre textual del valor de entidad (p. ej. "Good Smile Company"). Esto es coherente con que la metadata de texto sigue siendo la fuente de verdad: no existe todavía un identificador de entidad independiente del texto. La única excepción es la **imagen** de Personaje, que internamente usa una identidad compuesta (personaje + serie + ilustrador) para distinguir personajes homónimos — ver "Identidad compuesta para Personaje" en el punto 4; TAG y URL de Personaje siguen identificándose por el nombre plano, sin cambios.
 
 #### Origen de imagen configurable por metadato (1.1.0, ajustado en 1.1.1)
 
@@ -219,6 +232,7 @@ El logo respeta el **origen de imagen** configurado en Settings para ese metadat
 - Las asociaciones TAG de una sección se resuelven con **una sola consulta batch** (`get_terms` con `include`), nunca una consulta por fila.
 - Las miniaturas de logo se resuelven precargando el caché de adjuntos con **una sola consulta** (`get_posts` con `post__in`); las llamadas posteriores a `wp_get_attachment_image_src()` usan ese caché.
 - **(Desde 1.1.0)** Cuando un metadato de catálogo usa el origen de imagen "Imagen de un post relacionado", la resolución automática por valor (`BFM_Entity_Repository::get_related_image_attachment_ids()`) usa como máximo **tres consultas en total** para toda la pantalla — una para encontrar el post relacionado más antiguo de cada valor, una para precargar el caché de esos posts, y una última, solo si hace falta, para resolver en lote la primera imagen adjunta de los posts sin imagen destacada — sin importar cuántos valores o posts existan.
+- **(Desde 1.2.0)** La identidad compuesta de Personaje agrega como máximo **dos consultas adicionales** por carga de pantalla (los valores de Serie e Ilustrador de todos los posts, reutilizando la misma consulta agregada que ya usa el resto del repositorio), calculadas una sola vez y cacheadas en memoria durante la petición (`BFM_Entity_Repository::character_identity_context()`), sin importar cuántas veces se invoque internamente durante esa misma carga de página. No se ejecutan en absoluto para ningún otro metadato.
 - El listado de posts por valor de entidad resuelve todos los IDs coincidentes con la misma consulta agregada ya usada para contar valores, y luego usa un único `WP_Query` con `post__in` + `posts_per_page` para traer solo la página solicitada, evitando la consulta `SQL_CALC_FOUND_ROWS` adicional (`no_found_rows => true`).
 - Las sugerencias de autocompletado del editor (chips) se precargan una sola vez por carga de pantalla de edición de post — 4 consultas agregadas (una por campo de entidad), reutilizando exactamente la misma consulta que ya usan las pantallas de administración de entidades. No hay peticiones AJAX por cada tecla escrita.
 - La sincronización de TAGs ya no se ejecuta en cada guardado, solo cuando el post resulta publicado o programado.
@@ -250,6 +264,7 @@ wp_figuremetadata/
 ├── includes/
 │   ├── class-bfm-core.php
 │   ├── class-bfm-meta-fields.php
+│   ├── class-bfm-character-identity.php
 │   ├── class-bfm-post-editor.php
 │   ├── class-bfm-tag-sync.php
 │   ├── class-bfm-entity-repository.php
