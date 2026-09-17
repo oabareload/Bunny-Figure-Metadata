@@ -219,6 +219,66 @@
 	color: var(--bunny-accent);
 }
 
+/* Card preview: read-only featured thumbnail + excerpt, visually separated
+   from the editable metadata fields below it. */
+.bfm-card-preview {
+	display: flex;
+	gap: 12px;
+	padding-bottom: 14px;
+	margin-bottom: 14px;
+	border-bottom: 1px dashed var(--bunny-border);
+}
+
+.bfm-card-thumb-wrap {
+	flex: 0 0 auto;
+}
+
+.bfm-card-thumb {
+	width: 60px;
+	height: 60px;
+	object-fit: cover;
+	border-radius: var(--bunny-radius-sm);
+	display: block;
+	background: #f0f0f1;
+}
+
+.bfm-card-thumb-placeholder {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: var(--bunny-accent-light);
+	border: 1px dashed var(--bunny-border-strong);
+	color: var(--bunny-text-subtle);
+}
+
+.bfm-card-thumb-placeholder .dashicons {
+	font-size: 20px;
+	width: 20px;
+	height: 20px;
+}
+
+.bfm-card-excerpt-wrap {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.bfm-card-excerpt {
+	margin: 0;
+	font-size: 12px;
+	line-height: 1.5;
+	color: var(--bunny-text-muted);
+	max-height: calc(1.5em * 3);
+	overflow: hidden;
+	display: -webkit-box;
+	-webkit-line-clamp: 3;
+	-webkit-box-orient: vertical;
+}
+
+.bfm-card-excerpt-empty {
+	font-style: italic;
+	color: var(--bunny-text-subtle);
+}
+
 /* Internal fields grid: 2 columns for simple fields, full width for entity/chip fields */
 .bfm-card-fields-grid {
 	display: grid;

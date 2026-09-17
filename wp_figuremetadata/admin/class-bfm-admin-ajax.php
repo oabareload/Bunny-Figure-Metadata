@@ -414,6 +414,27 @@ class BFM_Admin_Ajax {
 				</h3>
 			</header>
 
+			<div class="bfm-card-preview">
+				<?php $thumbnail_url = get_the_post_thumbnail_url( $post, 'thumbnail' ); ?>
+				<div class="bfm-card-thumb-wrap">
+					<?php if ( $thumbnail_url ) : ?>
+						<img class="bfm-card-thumb" src="<?php echo esc_url( $thumbnail_url ); ?>" alt="">
+					<?php else : ?>
+						<span class="bfm-card-thumb bfm-card-thumb-placeholder" aria-hidden="true">
+							<span class="dashicons dashicons-format-image"></span>
+						</span>
+					<?php endif; ?>
+				</div>
+				<div class="bfm-card-excerpt-wrap">
+					<?php $excerpt = trim( wp_strip_all_tags( $post->post_excerpt ) ); ?>
+					<?php if ( '' !== $excerpt ) : ?>
+						<p class="bfm-card-excerpt"><?php echo esc_html( $excerpt ); ?></p>
+					<?php else : ?>
+						<p class="bfm-card-excerpt bfm-card-excerpt-empty"><?php esc_html_e( 'Sin excerpt.', 'bunny-figure-metadata' ); ?></p>
+					<?php endif; ?>
+				</div>
+			</div>
+
 			<div class="bfm-card-fields-grid">
 				<?php foreach ( BFM_Meta_Fields::all() as $meta_key => $field ) :
 					$value     = (string) get_post_meta( $post->ID, $meta_key, true );

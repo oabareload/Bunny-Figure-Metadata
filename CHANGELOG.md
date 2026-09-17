@@ -4,6 +4,14 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [1.4.0] - 2026-09-17
+
+### Añadido
+
+- Cada tarjeta de la pantalla **Posts** ahora muestra, antes de los campos editables, una vista previa de solo lectura con la miniatura destacada del post (tamaño `thumbnail`) y su excerpt manual. Ninguno de los dos es editable ni forma parte del payload de guardado.
+- Cuando el post no tiene imagen destacada se muestra un placeholder discreto; cuando no tiene excerpt manual se indica explícitamente "Sin excerpt." sin generarlo automáticamente a partir del contenido.
+- Ambos datos viajan dentro de la misma respuesta AJAX que ya devuelve cada fila (`build_maintenance_row_for_post()`), sin consultas adicionales por tarjeta ni cambios en la paginación/infinite scroll existente.
+
 ## [1.3.0] - 2026-08-30
 
 ### Añadido
