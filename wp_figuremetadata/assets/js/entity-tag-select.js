@@ -22,7 +22,10 @@
 	}
 
 	function selectorMarkup() {
-		return $('<button type="button" class="button-link bfm-tag-select-trigger"></button>')
+		// This trigger only ever renders when no TAG is associated yet, so it
+		// always carries the shared "missing value" highlight (bfm-field-missing,
+		// styled in admin.css); the chip markup below never gets that class.
+		return $('<button type="button" class="button-link bfm-tag-select-trigger bfm-field-missing"></button>')
 			.text(BFM_ENTITY_TAG.i18n.select);
 	}
 

@@ -148,7 +148,7 @@ endif;
 												<button type="button" class="bfm-tag-remove" aria-label="<?php esc_attr_e( 'Quitar TAG', 'bunny-figure-metadata' ); ?>">&times;</button>
 											</span>
 										<?php else : ?>
-											<button type="button" class="button-link bfm-tag-select-trigger"><?php esc_html_e( 'Seleccionar TAG...', 'bunny-figure-metadata' ); ?></button>
+											<button type="button" class="button-link bfm-tag-select-trigger bfm-field-missing"><?php esc_html_e( 'Seleccionar TAG...', 'bunny-figure-metadata' ); ?></button>
 										<?php endif; ?>
 									</span>
 								</td><?php endif; ?>
@@ -160,10 +160,10 @@ endif;
 										data-saved-value="<?php echo esc_attr( $url_value ); ?>"
 									>
 										<input
-											type="url"
-											class="bfm-url-input"
-											value="<?php echo esc_attr( $url_value ); ?>"
-											placeholder="https://"
+										type="url"
+										class="bfm-url-input<?php echo '' === $url_value ? ' bfm-field-missing' : ''; ?>"
+										value="<?php echo esc_attr( $url_value ); ?>"
+										placeholder="https://"
 										>
 									</span>
 								</td><?php endif; ?>
@@ -193,7 +193,7 @@ endif;
 													</span>
 												</span>
 											<?php else : ?>
-												<button type="button" class="button bfm-related-image-replace"><?php esc_html_e( 'Elegir imagen', 'bunny-figure-metadata' ); ?></button>
+												<button type="button" class="button bfm-related-image-replace bfm-field-missing"><?php esc_html_e( 'Elegir imagen', 'bunny-figure-metadata' ); ?></button>
 											<?php endif; ?>
 										</span>
 									<?php else : ?>
@@ -211,7 +211,7 @@ endif;
 													</span>
 												</span>
 											<?php else : ?>
-												<button type="button" class="button bfm-logo-select"><?php esc_html_e( 'Subir imagen', 'bunny-figure-metadata' ); ?></button>
+												<button type="button" class="button bfm-logo-select bfm-field-missing"><?php esc_html_e( 'Subir imagen', 'bunny-figure-metadata' ); ?></button>
 											<?php endif; ?>
 										</span>
 									<?php endif; ?>

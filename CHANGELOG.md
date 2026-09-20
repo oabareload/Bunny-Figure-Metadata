@@ -4,6 +4,13 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [1.5.0] - 2026-09-18
+
+### Añadido
+
+- En las páginas individuales de cada entidad/característica (Fabricantes, Ilustradores, Series, Personajes y cualquier otro campo marcado como entidad), las columnas TAG, URL y Logo ahora resaltan con un borde rojo suave cuando no tienen ningún dato, para detectar de un vistazo qué información falta.
+- El resaltado (`bfm-field-missing`) es únicamente una ayuda visual: no bloquea el guardado, no vuelve obligatorio ningún campo y no valida formato. Se actualiza al instante al escribir/asociar un valor y reaparece si se vuelve a borrar.
+
 ## [1.4.0] - 2026-09-17
 
 ### Añadido

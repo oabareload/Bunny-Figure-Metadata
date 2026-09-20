@@ -41,6 +41,18 @@
 	   URL — autosave on blur
 	   ========================================================================== */
 
+	// Immediate visual feedback as the user types, ahead of the AJAX save
+	// on blur below: purely a class toggle based on the current field value,
+	// no request, no re-render, so the field-missing highlight always
+	// matches what's currently in the input.
+	function syncUrlMissingState($input) {
+		$input.toggleClass('bfm-field-missing', '' === $.trim($input.val()));
+	}
+
+	$(document).on('input', '.bfm-url-input', function () {
+		syncUrlMissingState($(this));
+	});
+
 	$(document).on('blur', '.bfm-url-input', function () {
 		var $input = $(this);
 		var $cell = $input.closest('.bfm-url-cell');
@@ -75,10 +87,12 @@
 					$input.val(savedValue);
 					showCellError($cell, (response && response.data && response.data.message) || BFM_ENTITY_INFO.i18n.error);
 				}
+				syncUrlMissingState($input);
 			})
 			.fail(function () {
 				$input.prop('disabled', false);
 				$input.val(savedValue);
+				syncUrlMissingState($input);
 				showCellError($cell, BFM_ENTITY_INFO.i18n.error);
 			});
 	});
@@ -94,8 +108,11 @@
 	}
 
 	function renderLogoPlaceholder($cell) {
+		// Only rendered when the entity value has no logo yet, so it always
+		// carries the shared "missing value" highlight; renderLogoPreview()
+		// below never does.
 		$cell.empty().append(
-			$('<button type="button" class="button bfm-logo-select"></button>').text(BFM_ENTITY_INFO.i18n.upload)
+			$('<button type="button" class="button bfm-logo-select bfm-field-missing"></button>').text(BFM_ENTITY_INFO.i18n.upload)
 		);
 	}
 
@@ -210,8 +227,11 @@
 	   ========================================================================== */
 
 	function renderRelatedImagePlaceholder($cell) {
+		// Only rendered when neither a manual nor an automatic image resolved
+		// for this value, so it always carries the shared "missing value"
+		// highlight; renderRelatedImagePreview() below never does.
 		$cell.empty().append(
-			$('<button type="button" class="button bfm-related-image-replace"></button>').text(BFM_ENTITY_INFO.i18n.upload)
+			$('<button type="button" class="button bfm-related-image-replace bfm-field-missing"></button>').text(BFM_ENTITY_INFO.i18n.upload)
 		);
 	}
 

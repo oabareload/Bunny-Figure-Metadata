@@ -524,6 +524,46 @@
 }
 
 /* ==========================================================================
+   Campo vacío / valor faltante (ayuda visual, sin bloquear el guardado)
+   ========================================================================== */
+
+/*
+ * Shared highlight for a control that currently has no value, applied to
+ * the TAG "select" trigger, the URL input, and the logo "upload"/"choose"
+ * buttons on the entity list screens (partial-entity-list.php). It is
+ * added only to the specific markup that already represents "no value"
+ * (PHP on first render, JS after AJAX updates) and removed automatically
+ * the moment that markup is replaced with the filled-in version — never a
+ * separate obligatory/validation state.
+ *
+ * !important on border/background is required here: several of the
+ * controls this class is applied to (the dashed TAG trigger, the WP core
+ * .button used for the logo/related-image placeholders) already declare
+ * their own border/background at the same selector specificity later in
+ * this same stylesheet, which would otherwise silently override this
+ * highlight without it.
+ */
+.bfm-field-missing {
+	border: 2px solid #d63638 !important;
+	background-color: #fdf2f2 !important;
+	box-shadow: 0 0 0 2px rgba(214, 54, 56, 0.12);
+}
+
+/*
+ * Keep the focus indicator clearly visible on a highlighted-as-missing
+ * control: native/WP :focus styles for these inputs and buttons already
+ * win over the halo above (their :focus rules carry the same or higher
+ * specificity and no !important is used here), but this adds an explicit,
+ * guaranteed ring so focus is never harder to notice underneath the red
+ * border on any control type this class is applied to.
+ */
+.bfm-field-missing:focus,
+.bfm-field-missing:focus-visible {
+	outline: 2px solid var(--bunny-accent);
+	outline-offset: 1px;
+}
+
+/* ==========================================================================
    TAG asociado — selector, chip, autocomplete, states
    ========================================================================== */
 
