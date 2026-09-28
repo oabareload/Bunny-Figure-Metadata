@@ -262,7 +262,8 @@ class BFM_Features_Block {
 					$excluded_value,
 					$info_by_meta_key[ $meta_key ] ?? array(),
 					$tag_links_by_meta_key[ $meta_key ] ?? array(),
-					$settings['link_target'] ?? 'tag'
+					$settings['link_target'] ?? 'tag',
+					$post_id
 				);
 				if ( '' === $value_html ) {
 					$default = trim( (string) ( $settings['default'] ?? '' ) );
@@ -367,9 +368,10 @@ class BFM_Features_Block {
 	 * @param string               $separator      Value separator ("&").
 	 * @param string               $excluded_value Excluded value ("no dice", lowercase).
 	 * @param array<string,array>  $info_map       value name => [ url, image_id ], from BFM_Entity_Info_Map.
+	 * @param int                  $post_id        Post being rendered; passed to WPAM when signing external links.
 	 * @return string
 	 */
-	private function render_entity_value( string $raw_value, string $separator, string $excluded_value, array $info_map, array $tag_links, string $link_target = 'tag' ): string {
+	private function render_entity_value( string $raw_value, string $separator, string $excluded_value, array $info_map, array $tag_links, string $link_target = 'tag', int $post_id = 0 ): string {
 
 		$parts = array_filter(
 			array_map( 'trim', explode( $separator, $raw_value ) ),
@@ -400,6 +402,17 @@ class BFM_Features_Block {
 
 			if ( '' !== $link_url ) {
 				$is_external = 'external' === $link_target && '' !== $external_url;
+
+				// Optional WPAM integration: route genuinely external URLs through /goext/.
+				// The original URL is kept when WPAM is inactive, the URL is internal, or WPAM returns ''.
+				if ( $is_external && function_exists( 'wpam_get_external_link_url' ) && function_exists( 'wp_is_internal_link' ) && ! wp_is_internal_link( $link_url ) ) {
+					$signed_url = wpam_get_external_link_url( $link_url, $post_id );
+
+					if ( '' !== $signed_url ) {
+						$link_url = $signed_url;
+					}
+				}
+
 				$link_markup = $is_external
 					? '<a class="bfm-feature-link" href="%1$s" target="_blank" rel="noopener noreferrer"><span>%2$s</span><span class="bfm-feature-link-external-icon" aria-hidden="true">↗</span></a>'
 					: '<a class="bfm-feature-link" href="%1$s">%2$s</a>';

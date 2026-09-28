@@ -4,6 +4,13 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [1.6.0] - 2026-09-28
+
+### Añadido
+
+- Integración opcional con WPAM en el bloque **Características**: los enlaces externos de entidad (cuando el destino del enlace del campo es "Enlace externo") ahora pasan por el interstitial/redirect `/goext/` de WPAM mediante `wpam_get_external_link_url()`.
+- Solo se firman URLs realmente externas (`wp_is_internal_link()`). Se conserva la URL original si es interna, si WPAM no está activo o si WPAM devuelve una cadena vacía. No cambia ningún dato almacenado, el HTML del enlace (`target`, `rel`, clases, icono) ni los enlaces a TAG.
+
 ## [1.5.0] - 2026-09-18
 
 ### Añadido
