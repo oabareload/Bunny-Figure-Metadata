@@ -52,3 +52,148 @@
 	font-size: 0.82em;
 	line-height: 1;
 }
+
+/* ------------------------------------------------------------------
+ * Presentación "Tarjetas" (layout = cards)
+ *
+ * Todo queda acotado a .bfm-features-block--cards. El ancho de
+ * referencia llega como --bfm-card-min (entero en px ya validado en
+ * PHP). Colores derivados del color de texto del tema; sobrescribibles
+ * con las variables --bfm-card-*.
+ * ------------------------------------------------------------------ */
+
+.bfm-features-block--cards {
+	--bfm-card-min: 140px;
+	--bfm-card-gap: 12px;
+	--bfm-card-radius: 10px;
+	--bfm-card-bg: rgba(127, 127, 127, 0.08);
+	--bfm-card-border: rgba(127, 127, 127, 0.3);
+	--bfm-card-divider: rgba(127, 127, 127, 0.3);
+	--bfm-card-accent: currentColor;
+}
+
+.bfm-features-cards {
+	display: grid;
+	/* min(…, 100%) evita desbordes cuando el contenedor es más estrecho que el ancho de referencia. */
+	grid-template-columns: repeat(auto-fill, minmax(min(var(--bfm-card-min), 100%), 1fr));
+	gap: var(--bfm-card-gap);
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.bfm-features-card-item {
+	display: flex;
+	min-width: 0;
+	margin: 0;
+	padding: 0;
+}
+
+.bfm-card {
+	position: relative;
+	box-sizing: border-box;
+	display: flex;
+	flex: 1 1 auto;
+	flex-direction: column;
+	align-items: stretch;
+	min-width: 0;
+	padding: 14px 12px 12px;
+	background: var(--bfm-card-bg);
+	border: 1px solid var(--bfm-card-border);
+	border-radius: var(--bfm-card-radius);
+	color: inherit;
+	text-align: center;
+	text-decoration: none;
+}
+
+.bfm-card-value {
+	display: flex;
+	flex: 1 1 auto;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	min-height: 3.2em;
+	padding-bottom: 10px;
+	font-size: 1.05em;
+	font-weight: 600;
+	line-height: 1.35;
+	overflow-wrap: anywhere;
+}
+
+.bfm-card-part {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 6px;
+	max-width: 100%;
+}
+
+/* Nombre visible de la entidad bajo su imagen. */
+.bfm-card-text--caption {
+	font-size: 0.9em;
+}
+
+.bfm-card-image {
+	display: block;
+	max-width: 100%;
+	max-height: 96px;
+	width: auto;
+	height: auto;
+	margin: 0 auto;
+	object-fit: contain;
+}
+
+.bfm-card-label {
+	display: block;
+	padding-top: 9px;
+	border-top: 1px solid var(--bfm-card-divider);
+	font-size: 0.85em;
+	font-weight: 500;
+	line-height: 1.3;
+	overflow-wrap: anywhere;
+}
+
+.bfm-card-external-icon {
+	position: absolute;
+	top: 6px;
+	right: 9px;
+	font-size: 0.75em;
+	line-height: 1;
+}
+
+/* Solo las tarjetas enlazadas reaccionan: las demás no aparentan ser pulsables. */
+.bfm-card--link {
+	cursor: pointer;
+}
+
+.bfm-card--link:hover,
+.bfm-card--link:focus-visible {
+	border-color: var(--bfm-card-accent);
+	color: inherit;
+	text-decoration: none;
+	box-shadow: 0 4px 14px rgba(0, 0, 0, 0.14);
+}
+
+/* Cambio no dependiente del color: el nombre se subraya. */
+.bfm-card--link:hover .bfm-card-label,
+.bfm-card--link:focus-visible .bfm-card-label {
+	text-decoration: underline;
+	text-underline-offset: 3px;
+}
+
+.bfm-card--link:focus-visible {
+	outline: 2px solid var(--bfm-card-accent);
+	outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	.bfm-card--link {
+		transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+	}
+
+	.bfm-card--link:hover,
+	.bfm-card--link:focus-visible {
+		transform: translateY(-2px);
+	}
+}

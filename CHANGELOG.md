@@ -4,6 +4,23 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [1.7.0] - 2026-10-19
+
+### Añadido
+
+- Nueva **presentación "Tarjetas"** en el bloque **Características**, seleccionable en el panel *Presentación* del propio bloque (junto a la **Clásica**, que no cambia). No es un bloque nuevo ni duplica la obtención de metadata: ambas presentaciones usan la misma resolución de valores y solo difieren en el marcado.
+- Atributos nuevos del bloque: `layout` (`classic` por defecto | `cards`) y `cardMinWidth` (ancho de referencia en px: 140 por defecto, rango 100–250). Los bloques ya guardados no tienen esos atributos y siguen renderizando la presentación clásica sin reconfigurarse. Ambos valores se validan en servidor; un ancho fuera de rango se acota y uno no numérico vuelve al valor por defecto.
+- Cada tarjeta muestra el valor arriba y el nombre del campo abajo (el mismo prefijo configurado, sin los dos puntos finales), centrado, en una cuadrícula CSS Grid que se ajusta al espacio disponible sin desbordes ni altura fija. El valor se escapa y no se altera ni se trunca.
+- Las entidades de un campo con logo activado muestran su imagen junto al nombre visible de la entidad (la imagen es decorativa, `alt` vacío, porque el texto adyacente ya la nombra), resuelta con `BFM_Entity_Info_Map::get_effective_image_ids()` y `get_logo_urls()` (una sola llamada por lote), incluida la clave de identidad compuesta de Personaje. Solo se resuelven en la presentación Tarjetas.
+- **Valores múltiples (`&`) en Tarjetas:** si un campo tiene varios valores y al menos uno tiene imagen o un enlace válido, cada valor se muestra en su propia tarjeta, con solo su imagen y solo su enlace (asociados por el nombre del valor, nunca por posición) y con el nombre del campo abajo. Si ninguno tiene imagen ni enlace, siguen agrupados en una sola tarjeta con el formato `A & B` del listado clásico. Un campo con un único valor siempre es una sola tarjeta. La presentación Clásica no cambia.
+- Cuando un valor tiene enlace, toda su tarjeta es un único `<a>` (con los mismos destino TAG/externo, firma opcional de WPAM, `target` y `rel` que el bloque clásico), con estados `:hover` y `:focus-visible`. Nunca hay enlaces anidados. Las tarjetas sin enlace no tienen efectos interactivos.
+- Dentro de una misma petición de WordPress, la resolución de imágenes de Tarjetas se reutiliza (IDs efectivos por metadato y URLs por adjunto), de modo que varios bloques en una misma página (p. ej. un listado de posts) no repiten esas consultas. Es una memoria estática solo de la petición; no se persiste nada.
+- Los campos sin valor, con `No dice` o sin valor por defecto no generan tarjeta (mismo criterio que el listado clásico).
+
+### Cambiado
+
+- `BFM_Features_Block`: la resolución de valores y enlaces se extrajo de `render()` / `render_entity_value()` a `resolve_field_parts()` / `resolve_entity_parts()` para compartirla entre presentaciones. La salida HTML de la presentación Clásica es idéntica a la anterior.
+
 ## [1.6.0] - 2026-09-28
 
 ### Añadido

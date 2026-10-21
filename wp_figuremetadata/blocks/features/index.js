@@ -27,7 +27,18 @@
 	var ToggleControl = components.ToggleControl;
 	var TextControl = components.TextControl;
 	var SelectControl = components.SelectControl;
+	var RangeControl = components.RangeControl;
 	var __ = i18n.__;
+
+	var LAYOUT_OPTIONS = [
+		{ label: __( 'Clásica', 'bunny-figure-metadata' ), value: 'classic' },
+		{ label: __( 'Tarjetas', 'bunny-figure-metadata' ), value: 'cards' }
+	];
+
+	// Keep in sync with BFM_Features_Block::*_CARD_MIN_WIDTH (the server re-validates anyway).
+	var CARD_MIN_WIDTH_DEFAULT = 140;
+	var CARD_MIN_WIDTH_MIN = 100;
+	var CARD_MIN_WIDTH_MAX = 250;
 
 	var HTML_TAG_OPTIONS = [
 		{ label: 'H1', value: 'h1' },
@@ -48,9 +59,35 @@
 			var attributes = props.attributes;
 			var setAttributes = props.setAttributes;
 
+			var isCards = 'cards' === attributes.layout;
+
 			var inspector = el(
 				InspectorControls,
 				{},
+				el(
+					PanelBody,
+					{ title: __( 'Presentación', 'bunny-figure-metadata' ), initialOpen: true },
+					el( SelectControl, {
+						label: __( 'Presentación', 'bunny-figure-metadata' ),
+						value: isCards ? 'cards' : 'classic',
+						options: LAYOUT_OPTIONS,
+						onChange: function ( value ) { setAttributes( { layout: value } ); }
+					} ),
+					isCards ? el( RangeControl, {
+						label: __( 'Ancho de tarjeta (px)', 'bunny-figure-metadata' ),
+						help: __( 'Ancho de referencia: las tarjetas se ajustan al espacio disponible.', 'bunny-figure-metadata' ),
+						value: attributes.cardMinWidth || CARD_MIN_WIDTH_DEFAULT,
+						min: CARD_MIN_WIDTH_MIN,
+						max: CARD_MIN_WIDTH_MAX,
+						step: 5,
+						initialPosition: CARD_MIN_WIDTH_DEFAULT,
+						allowReset: true,
+						resetFallbackValue: CARD_MIN_WIDTH_DEFAULT,
+						onChange: function ( value ) {
+							setAttributes( { cardMinWidth: undefined === value ? CARD_MIN_WIDTH_DEFAULT : value } );
+						}
+					} ) : null
+				),
 				el(
 					PanelBody,
 					{ title: __( 'Encabezado', 'bunny-figure-metadata' ), initialOpen: true },

@@ -21,6 +21,14 @@
 		"headingClassName": {
 			"type": "string",
 			"default": ""
+		},
+		"layout": {
+			"type": "string",
+			"default": "classic"
+		},
+		"cardMinWidth": {
+			"type": "integer",
+			"default": 140
 		}
 	},
 	"supports": {
