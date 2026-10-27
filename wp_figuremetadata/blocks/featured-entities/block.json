@@ -48,6 +48,10 @@
 		"titleClassName": {
 			"type": "string",
 			"default": ""
+		},
+		"layout": {
+			"type": "string",
+			"default": "list"
 		}
 	},
 	"supports": {

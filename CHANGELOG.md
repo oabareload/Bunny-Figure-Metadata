@@ -4,6 +4,17 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [1.8.0] - 2026-10-23
+
+### Añadido
+
+- Nuevo atributo `layout` (`list` por defecto | `cards`) en el bloque **Entidades destacadas**, seleccionable en el selector **Diseño** del panel *Visualización*. No es un bloque nuevo: ambos diseños usan la misma lista ya resuelta y cacheada. Los bloques ya guardados no tienen el atributo y siguen mostrándose como lista, igual que cualquier valor no válido; cambiar el diseño no modifica ninguna otra opción.
+- Diseño **Tarjetas**: una tarjeta por entidad en una cuadrícula CSS Grid (`repeat(auto-fill, minmax(min(100%, 220px), 1fr))`), sin columnas, filas ni alturas fijas y sin JavaScript. Cada tarjeta lleva logo (mismo tamaño 1:1 configurado), nombre completo sin truncar y conteo, según las opciones del bloque. Con TAG asociado y "Enlazar al TAG" activo, toda la tarjeta es un único `<a>` con `:hover` y `:focus-visible`; sin TAG es un contenedor no interactivo. Estilos acotados a `.bfm-featured-entities-block--cards` (variables `--bfm-fe-card-*`).
+
+### Cambiado
+
+- `BFM_Featured_Entities_Block`: el marcado del logo y del conteo se extrajo de `render_row()` a `render_logo_html()` / `render_count_html()` para compartirlo con las tarjetas. La salida de la lista es idéntica a la anterior. El diseño no forma parte de la clave de caché ni añade consultas.
+
 ## [1.7.0] - 2026-10-19
 
 ### Añadido

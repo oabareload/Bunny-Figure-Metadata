@@ -57,6 +57,11 @@
 		return { label: entity.label, value: entity.value };
 	} );
 
+	var LAYOUT_OPTIONS = [
+		{ label: __( 'Lista', 'bunny-figure-metadata' ), value: 'list' },
+		{ label: __( 'Tarjetas (grid)', 'bunny-figure-metadata' ), value: 'cards' }
+	];
+
 	registerBlockType( 'bunny-figure-metadata/featured-entities', {
 
 		edit: function ( props ) {
@@ -92,6 +97,12 @@
 				el(
 					PanelBody,
 					{ title: __( 'Visualización', 'bunny-figure-metadata' ), initialOpen: true },
+					el( SelectControl, {
+						label: __( 'Diseño', 'bunny-figure-metadata' ),
+						value: 'cards' === attributes.layout ? 'cards' : 'list',
+						options: LAYOUT_OPTIONS,
+						onChange: function ( value ) { setAttributes( { layout: value } ); }
+					} ),
 					el( ToggleControl, {
 						label: __( 'Mostrar logo', 'bunny-figure-metadata' ),
 						checked: attributes.showLogo,

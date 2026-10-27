@@ -1,8 +1,10 @@
 /**
  * Bunny Figure Metadata — "Entidades destacadas" block
  *
- * Compact list styling, intentionally not cards/collage, designed to
- * work well inside a footer widget column. Intentionally lightweight:
+ * Compact list styling, designed to work well inside a footer widget
+ * column. An optional cards layout (grid) is scoped entirely under
+ * .bfm-featured-entities-block--cards, so it never affects the list.
+ * Intentionally lightweight:
  * this loads on the frontend only on pages where the block is actually
  * used (registered via block.json's "style").
  *
@@ -59,4 +61,89 @@ a.bfm-featured-entity-name {
 	opacity: 0.7;
 	font-variant-numeric: tabular-nums;
 	white-space: nowrap;
+}
+
+/* ------------------------------------------------------------------
+ * Layout "Tarjetas" (grid). Todo queda acotado a
+ * .bfm-featured-entities-block--cards: no afecta a la lista. Colores
+ * derivados del texto del tema, sobrescribibles con --bfm-fe-card-*.
+ * Sin alturas fijas: el contenido nunca se recorta ni se trunca.
+ * ------------------------------------------------------------------ */
+
+.bfm-featured-entities-block--cards {
+	--bfm-fe-card-gap: 10px;
+	--bfm-fe-card-radius: 8px;
+	--bfm-fe-card-bg: rgba(127, 127, 127, 0.08);
+	--bfm-fe-card-border: rgba(127, 127, 127, 0.3);
+	--bfm-fe-card-accent: currentColor;
+}
+
+.bfm-featured-entities-cards {
+	display: grid;
+	/* min(100%, 220px) evita desbordes en contenedores más estrechos que 220px. */
+	grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+	gap: var(--bfm-fe-card-gap);
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.bfm-featured-entity-card-item {
+	display: flex;
+	min-width: 0;
+	margin: 0;
+	padding: 0;
+}
+
+.bfm-featured-entity-card {
+	box-sizing: border-box;
+	display: flex;
+	flex: 1 1 auto;
+	align-items: center;
+	gap: 10px;
+	min-width: 0;
+	padding: 10px 12px;
+	background: var(--bfm-fe-card-bg);
+	border: 1px solid var(--bfm-fe-card-border);
+	border-radius: var(--bfm-fe-card-radius);
+	color: inherit;
+	text-decoration: none;
+}
+
+.bfm-featured-entity-card-name {
+	flex: 1 1 auto;
+	min-width: 0;
+	font-weight: 600;
+	line-height: 1.35;
+	overflow-wrap: anywhere;
+}
+
+/* Solo las tarjetas enlazadas reaccionan: las demás no aparentan ser pulsables. */
+.bfm-featured-entity-card--link {
+	cursor: pointer;
+}
+
+.bfm-featured-entity-card--link:hover,
+.bfm-featured-entity-card--link:focus-visible {
+	border-color: var(--bfm-fe-card-accent);
+	color: inherit;
+	text-decoration: none;
+}
+
+/* Cambio no dependiente del color: el nombre se subraya. */
+.bfm-featured-entity-card--link:hover .bfm-featured-entity-card-name,
+.bfm-featured-entity-card--link:focus-visible .bfm-featured-entity-card-name {
+	text-decoration: underline;
+	text-underline-offset: 3px;
+}
+
+.bfm-featured-entity-card--link:focus-visible {
+	outline: 2px solid var(--bfm-fe-card-accent);
+	outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	.bfm-featured-entity-card--link {
+		transition: border-color 0.18s ease;
+	}
 }

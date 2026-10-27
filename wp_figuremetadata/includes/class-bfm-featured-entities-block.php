@@ -62,6 +62,15 @@ class BFM_Featured_Entities_Block {
 	const ORDER_OPTIONS = array( 'posts_desc', 'posts_asc', 'name_asc', 'name_desc', 'random' );
 
 	/**
+	 * Available layouts. "list" is the default, so blocks saved before the
+	 * option existed keep rendering exactly as before. The layout only
+	 * changes the markup of the already-resolved (and cached) entity list:
+	 * it is deliberately not part of the cache key.
+	 */
+	const LAYOUTS        = array( 'list', 'cards' );
+	const DEFAULT_LAYOUT = 'list';
+
+	/**
 	 * Default logo size in pixels, used when the attribute is missing.
 	 */
 	const DEFAULT_LOGO_SIZE = 24;
@@ -196,6 +205,7 @@ class BFM_Featured_Entities_Block {
 		$title       = isset( $attributes['title'] ) ? trim( (string) $attributes['title'] ) : '';
 		$title_tag   = $this->sanitize_title_tag( $attributes['titleTag'] ?? 'h2' );
 		$title_class = isset( $attributes['titleClassName'] ) ? sanitize_html_class( (string) $attributes['titleClassName'] ) : '';
+		$layout      = $this->sanitize_layout( $attributes['layout'] ?? self::DEFAULT_LAYOUT );
 
 		$entities = $this->get_ranked_entities( $meta_key, $count, $order_by, $show_logo, $link_to_tag );
 
@@ -214,20 +224,26 @@ class BFM_Featured_Entities_Block {
 			esc_html( $title )
 		);
 
+		$is_cards    = ( 'cards' === $layout );
+		$block_class = $is_cards ? 'bfm-featured-entities-block bfm-featured-entities-block--cards' : 'bfm-featured-entities-block';
+
 		$rows = array();
 
 		foreach ( $entities as $entity ) {
-			$rows[] = $this->render_row( $entity, $show_logo, $show_count, $logo_size );
+			$rows[] = $is_cards
+				? $this->render_card( $entity, $show_logo, $show_count, $logo_size )
+				: $this->render_row( $entity, $show_logo, $show_count, $logo_size );
 		}
 
 		$wrapper_attributes = function_exists( 'get_block_wrapper_attributes' )
-			? get_block_wrapper_attributes( array( 'class' => 'bfm-featured-entities-block' ) )
-			: 'class="bfm-featured-entities-block"';
+			? get_block_wrapper_attributes( array( 'class' => $block_class ) )
+			: 'class="' . esc_attr( $block_class ) . '"';
 
 		return sprintf(
-			'<div %1$s>%2$s<ul class="bfm-featured-entities-list">%3$s</ul></div>',
+			'<div %1$s>%2$s<ul class="%3$s">%4$s</ul></div>',
 			$wrapper_attributes,
 			$title_html,
+			$is_cards ? 'bfm-featured-entities-cards' : 'bfm-featured-entities-list',
 			implode( '', $rows )
 		);
 	}
@@ -246,19 +262,7 @@ class BFM_Featured_Entities_Block {
 	 */
 	private function render_row( array $entity, bool $show_logo, bool $show_count, int $logo_size ): string {
 
-		$logo_html = '';
-
-		if ( $show_logo && '' !== $entity['logo_url'] ) {
-			// width/height/style all come from the same sanitized integer, so
-			// the logo is always rendered square (1:1) regardless of the
-			// source image's own aspect ratio; object-fit: contain (in
-			// style.css) prevents any stretching/deformation within that box.
-			$logo_html = sprintf(
-				'<img class="bfm-featured-entity-logo" src="%1$s" alt="" width="%2$d" height="%2$d" style="width:%2$dpx;height:%2$dpx;" loading="lazy" />',
-				esc_url( $entity['logo_url'] ),
-				$logo_size
-			);
-		}
+		$logo_html = $this->render_logo_html( $entity, $show_logo, $logo_size );
 
 		if ( $entity['term_id'] > 0 && '' !== $entity['tag_url'] ) {
 			$name_html = sprintf(
@@ -273,16 +277,90 @@ class BFM_Featured_Entities_Block {
 			);
 		}
 
-		$count_html = '';
-
-		if ( $show_count ) {
-			$count_html = sprintf(
-				'<span class="bfm-featured-entity-count">%s</span>',
-				esc_html( number_format_i18n( $entity['count'] ) )
-			);
-		}
+		$count_html = $this->render_count_html( $entity, $show_count );
 
 		return sprintf( '<li class="bfm-featured-entity">%s%s%s</li>', $logo_html, $name_html, $count_html );
+	}
+
+	/**
+	 * Cards layout: render one card (inside its <li>) for an entity, from
+	 * the same resolved data and the same logo/count markup as the list.
+	 * With a TAG link the whole card is a single <a> (never nested links);
+	 * without one it is a plain, non-interactive container. The name is
+	 * never truncated.
+	 *
+	 * @param array{name:string,count:int,term_id:int,tag_url:string,logo_url:string} $entity     Resolved entity data.
+	 * @param bool                                                                    $show_logo  Whether to render the logo.
+	 * @param bool                                                                    $show_count Whether to render the post count.
+	 * @param int                                                                     $logo_size  Logo width/height in pixels (already sanitized).
+	 * @return string
+	 */
+	private function render_card( array $entity, bool $show_logo, bool $show_count, int $logo_size ): string {
+
+		$inner = sprintf(
+			'%1$s<span class="bfm-featured-entity-card-name">%2$s</span>%3$s',
+			$this->render_logo_html( $entity, $show_logo, $logo_size ),
+			esc_html( $entity['name'] ),
+			$this->render_count_html( $entity, $show_count )
+		);
+
+		// A link that esc_url() rejects is not linked.
+		$href = $entity['term_id'] > 0 ? esc_url( $entity['tag_url'] ) : '';
+
+		if ( '' === $href ) {
+			return '<li class="bfm-featured-entity-card-item"><div class="bfm-featured-entity-card">' . $inner . '</div></li>';
+		}
+
+		return sprintf(
+			'<li class="bfm-featured-entity-card-item"><a class="bfm-featured-entity-card bfm-featured-entity-card--link" href="%1$s">%2$s</a></li>',
+			$href,
+			$inner
+		);
+	}
+
+	/**
+	 * Optional logo markup, shared by both layouts: rendered at the
+	 * configured, always-square size.
+	 *
+	 * @param array{name:string,count:int,term_id:int,tag_url:string,logo_url:string} $entity    Resolved entity data.
+	 * @param bool                                                                    $show_logo Whether to render the logo.
+	 * @param int                                                                     $logo_size Logo width/height in pixels (already sanitized).
+	 * @return string
+	 */
+	private function render_logo_html( array $entity, bool $show_logo, int $logo_size ): string {
+
+		if ( ! $show_logo || '' === $entity['logo_url'] ) {
+			return '';
+		}
+
+		// width/height/style all come from the same sanitized integer, so
+		// the logo is always rendered square (1:1) regardless of the
+		// source image's own aspect ratio; object-fit: contain (in
+		// style.css) prevents any stretching/deformation within that box.
+		return sprintf(
+			'<img class="bfm-featured-entity-logo" src="%1$s" alt="" width="%2$d" height="%2$d" style="width:%2$dpx;height:%2$dpx;" loading="lazy" />',
+			esc_url( $entity['logo_url'] ),
+			$logo_size
+		);
+	}
+
+	/**
+	 * Optional post-count markup, shared by both layouts.
+	 *
+	 * @param array{name:string,count:int,term_id:int,tag_url:string,logo_url:string} $entity     Resolved entity data.
+	 * @param bool                                                                    $show_count Whether to render the post count.
+	 * @return string
+	 */
+	private function render_count_html( array $entity, bool $show_count ): string {
+
+		if ( ! $show_count ) {
+			return '';
+		}
+
+		return sprintf(
+			'<span class="bfm-featured-entity-count">%s</span>',
+			esc_html( number_format_i18n( $entity['count'] ) )
+		);
 	}
 
 	/**
@@ -613,6 +691,20 @@ class BFM_Featured_Entities_Block {
 		$order_by = (string) $order_by;
 
 		return in_array( $order_by, self::ORDER_OPTIONS, true ) ? $order_by : 'posts_desc';
+	}
+
+	/**
+	 * Restrict the configured layout to the supported set, falling back
+	 * to the list (the behavior of blocks saved before this option).
+	 *
+	 * @param mixed $layout Requested layout.
+	 * @return string
+	 */
+	private function sanitize_layout( $layout ): string {
+
+		$layout = (string) $layout;
+
+		return in_array( $layout, self::LAYOUTS, true ) ? $layout : self::DEFAULT_LAYOUT;
 	}
 
 	/**
