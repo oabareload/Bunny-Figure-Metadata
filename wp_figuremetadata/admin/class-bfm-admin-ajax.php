@@ -437,12 +437,13 @@ class BFM_Admin_Ajax {
 
 			<div class="bfm-card-fields-grid">
 				<?php foreach ( BFM_Meta_Fields::all() as $meta_key => $field ) :
-					$value     = (string) get_post_meta( $post->ID, $meta_key, true );
+					$value       = (string) get_post_meta( $post->ID, $meta_key, true );
 					if ( 'no dice' === strtolower( trim( $value ) ) ) {
 						$value = '';
 					}
-					$is_entity = ! empty( $field['entity'] );
-					$field_cls = 'bfm-card-field' . ( $is_entity ? ' bfm-card-field-full' : '' );
+					$is_entity   = ! empty( $field['entity'] );
+					$is_textarea = 'textarea' === ( $field['type'] ?? 'text' );
+					$field_cls   = 'bfm-card-field' . ( ( $is_entity || $is_textarea ) ? ' bfm-card-field-full' : '' );
 				?>
 					<div class="<?php echo esc_attr( $field_cls ); ?>" data-meta-key="<?php echo esc_attr( $meta_key ); ?>">
 						<label class="bfm-card-field-label">
@@ -456,6 +457,25 @@ class BFM_Admin_Ajax {
 										<span class="bfm-figure-chip-list"></span>
 										<input type="text" class="bfm-figure-chip-input" autocomplete="off" aria-label="<?php echo esc_attr( $field['label'] ); ?>" data-meta-key="<?php echo esc_attr( $meta_key ); ?>">
 									</div>
+								</div>
+							<?php elseif ( $is_textarea ) : ?>
+								<div class="bfm-card-textarea-compact" data-meta-key="<?php echo esc_attr( $meta_key ); ?>">
+									<input type="hidden" class="bfm-card-textarea-hidden" value="<?php echo esc_attr( $value ); ?>" data-meta-key="<?php echo esc_attr( $meta_key ); ?>">
+									<span class="bfm-card-textarea-snippet" title="<?php echo esc_attr( $value ); ?>">
+										<?php
+										$preview = trim( preg_replace( '/\s+/', ' ', $value ) );
+										if ( '' !== $preview ) {
+											$len = function_exists( 'mb_strlen' ) ? mb_strlen( $preview ) : strlen( $preview );
+											$cut = function_exists( 'mb_substr' ) ? mb_substr( $preview, 0, 42 ) : substr( $preview, 0, 42 );
+											echo esc_html( $len > 45 ? $cut . '...' : $preview );
+										} else {
+											echo '<span class="bfm-card-textarea-empty">' . esc_html__( '(Vacío)', 'bunny-figure-metadata' ) . '</span>';
+										}
+										?>
+									</span>
+									<button type="button" class="button button-small bfm-card-textarea-open" data-meta-key="<?php echo esc_attr( $meta_key ); ?>" data-label="<?php echo esc_attr( $field['label'] ); ?>" data-post-title="<?php echo esc_attr( get_the_title( $post ) ?: ( '#' . $post->ID ) ); ?>">
+										<?php esc_html_e( 'Editar', 'bunny-figure-metadata' ); ?>
+									</button>
 								</div>
 							<?php else : ?>
 								<input type="text" class="bfm-card-input" value="<?php echo esc_attr( $value ); ?>" data-meta-key="<?php echo esc_attr( $meta_key ); ?>" placeholder="<?php echo esc_attr( $field['label'] ); ?>">

@@ -1,0 +1,25 @@
+/**
+ * Bunny Figure Metadata — Metadata Field block styles
+ */
+
+.bfm-metadata-field-block {
+	margin: 1.5em 0;
+}
+
+.bfm-metadata-field-label {
+	margin-top: 0;
+	margin-bottom: 0.5em;
+}
+
+.bfm-metadata-field-value {
+	line-height: 1.7;
+}
+
+.bfm-metadata-field-placeholder {
+	border: 1px dashed #c3c4c7;
+	border-radius: 4px;
+	padding: 16px;
+	color: #646970;
+	font-style: italic;
+	background: #f6f7f7;
+}

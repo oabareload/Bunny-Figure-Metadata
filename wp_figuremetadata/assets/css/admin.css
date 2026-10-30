@@ -896,3 +896,60 @@
 	width: auto;
 	max-width: 200px;
 }
+
+/* ==========================================================================
+   Post Maintenance — textarea compact control and modal
+   ========================================================================== */
+
+.bfm-card-textarea-compact {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	background: #f6f7f7;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	padding: 4px 8px;
+	min-height: 32px;
+	box-sizing: border-box;
+}
+
+.bfm-card-textarea-snippet {
+	flex: 1 1 auto;
+	font-size: 12px;
+	color: #2c3338;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.bfm-card-textarea-empty {
+	color: #8c8f94;
+	font-style: italic;
+}
+
+.bfm-card-textarea-open {
+	flex-shrink: 0;
+}
+
+.bfm-modal-content-wide {
+	max-width: 680px;
+	width: calc(100% - 32px);
+}
+
+.bfm-post-textarea-modal-subtitle {
+	margin-top: -6px;
+	margin-bottom: 12px;
+	color: #646970;
+	font-weight: 500;
+}
+
+#bfm-post-textarea-editor {
+	width: 100%;
+	min-height: 220px;
+	resize: vertical;
+	font-family: inherit;
+	line-height: 1.5;
+	box-sizing: border-box;
+	margin-bottom: 12px;
+}

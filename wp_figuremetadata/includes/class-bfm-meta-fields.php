@@ -35,6 +35,7 @@ class BFM_Meta_Fields {
 				'label'        => $field['label'],
 				'entity'       => in_array( $meta_key, self::legacy_entity_keys(), true ),
 				'type'         => 'text',
+				'searchable'   => false,
 				'tag'          => in_array( $meta_key, self::legacy_entity_keys(), true ),
 				'url'          => in_array( $meta_key, self::legacy_entity_keys(), true ),
 				'logo'         => in_array( $meta_key, self::legacy_entity_keys(), true ),
@@ -127,7 +128,7 @@ class BFM_Meta_Fields {
 			if ( '' === $meta_key || ! is_array( $field ) ) {
 				continue;
 			}
-			$types = array( 'text', 'number', 'currency', 'month' );
+			$types = array( 'text', 'number', 'currency', 'month', 'textarea' );
 			$type  = isset( $field['type'] ) && in_array( $field['type'], $types, true ) ? $field['type'] : 'text';
 			$is_entity = ! empty( $field['entity'] );
 			$image_sources = array( 'custom', 'related' );
@@ -136,6 +137,7 @@ class BFM_Meta_Fields {
 				'label'        => isset( $field['label'] ) ? sanitize_text_field( $field['label'] ) : $meta_key,
 				'entity'       => $is_entity,
 				'type'         => $type,
+				'searchable'   => ! empty( $field['searchable'] ),
 				'tag'          => $is_entity && ( ! array_key_exists( 'tag', $field ) || ! empty( $field['tag'] ) ),
 				'url'          => $is_entity && ( ! array_key_exists( 'url', $field ) || ! empty( $field['url'] ) ),
 				'logo'         => $is_entity && ( ! array_key_exists( 'logo', $field ) || ! empty( $field['logo'] ) ),
@@ -158,6 +160,17 @@ class BFM_Meta_Fields {
 	public static function tag_sources(): array {
 		return array_keys( array_filter( self::all(), static function ( $field ) {
 			return ! empty( $field['tag'] );
+		} ) );
+	}
+
+	/**
+	 * Meta fields marked as searchable in WordPress search queries.
+	 *
+	 * @return array<int, string>
+	 */
+	public static function searchable_keys(): array {
+		return array_keys( array_filter( self::all(), static function ( $field ) {
+			return ! empty( $field['searchable'] );
 		} ) );
 	}
 

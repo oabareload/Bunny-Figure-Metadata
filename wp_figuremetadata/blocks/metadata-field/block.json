@@ -1,0 +1,46 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "bunny-figure-metadata/metadata-field",
+	"title": "Bunny Figure: Metadata Field",
+	"category": "widgets",
+	"icon": "editor-alignleft",
+	"description": "Muestra individualmente cualquier metadato registrado en Bunny Figure Metadata, como historias, descripciones o características. Bloque dinámico.",
+	"keywords": [ "bunny", "figura", "metadata", "field", "historia", "story" ],
+	"textdomain": "bunny-figure-metadata",
+	"usesContext": [ "postId", "postType" ],
+	"attributes": {
+		"metaKey": {
+			"type": "string",
+			"default": ""
+		},
+		"showLabel": {
+			"type": "boolean",
+			"default": true
+		},
+		"customLabel": {
+			"type": "string",
+			"default": ""
+		},
+		"labelTag": {
+			"type": "string",
+			"default": "h2"
+		},
+		"valueTag": {
+			"type": "string",
+			"default": "div"
+		},
+		"valueClassName": {
+			"type": "string",
+			"default": ""
+		},
+		"hideIfEmpty": {
+			"type": "boolean",
+			"default": true
+		}
+	},
+	"supports": {
+		"html": false,
+		"align": false
+	}
+}

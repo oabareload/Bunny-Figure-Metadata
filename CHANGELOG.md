@@ -4,6 +4,18 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/).
 
+## [1.9.0] - 2026-10-30
+
+### Añadido
+
+- **Nuevo tipo de metadato Textarea**: Soporte para campos de texto extenso y multilínea (p. ej. historias, descripciones). Totalmente compatible con Unicode y preservación estricta de saltos de línea mediante sanitización con `sanitize_textarea_field()` y escape seguro con `esc_textarea()`.
+- **Edición individual en post editor**: Los campos `textarea` se renderizan como áreas de texto amplias con redimensionamiento vertical habilitado y disposición a ancho completo en la cuadrícula de metabox (`.bfm-figure-meta-field--textarea`).
+- **Edición masiva con modal accesible**: En la pantalla de mantenimiento de posts (**Figure Metadata > Posts**), los campos `textarea` se presentan de forma compacta con una vista previa truncada y un botón de edición. El modal dedicado (`#bfm-post-textarea-modal`) permite editar el contenido completo con confirmación y cancelación accesible mediante teclado (Escape) y retorno de foco, sin recargar ni alterar el flujo de guardado de la tarjeta.
+- **Configuración individual de búsqueda (`searchable`)**: Propiedad booleana por metadato (desactivada por defecto) administrable desde **Figure Metadata > Settings** con el checkbox «Incluir este metadato en las búsquedas de WordPress».
+- **Integración de búsquedas en el sitio (`BFM_Search`)**: Los metadatos marcados como `searchable` se incorporan a las búsquedas normales del sitio mediante consultas SQL preparadas con subconsultas correlacionadas `EXISTS` en `wp_postmeta`. Previene resultados duplicados, evita JOINs innecesarios en la consulta principal de posts, no altera búsquedas administrativas y descarta valores vacíos o nulos.
+- **Nuevo bloque Gutenberg dinámico "Metadata Field" (`bunny-figure-metadata/metadata-field`)**: Componente genérico para renderizar en frontend y editor cualquier metadato registrado del post actual. Ofrece selección dinámica de metadatos, personalización u ocultamiento de etiqueta, etiquetas HTML configurables (`h1`–`h6`, `p`, `div`, `span`) de manera independiente para título y valor, clases CSS adicionales, formato seguro con conservación de saltos de línea (`nl2br` + `esc_html`) y opción de visibilidad «Mostrar únicamente si el metadato tiene contenido» que garantiza 0 bytes de HTML para posts sin contenido o patrones.
+- **Suite de pruebas automatizadas (`wp_figuremetadata/tests/test-suite.php`)**: Verificación automatizada de 25 puntos que cubren metadatos, edición individual y masiva, búsquedas, bloque Gutenberg y rendimiento.
+
 ## [1.8.0] - 2026-10-23
 
 ### Añadido

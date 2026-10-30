@@ -75,8 +75,10 @@ class BFM_Core {
 		require_once BFM_PATH . 'includes/class-bfm-entity-repository.php';
 		require_once BFM_PATH . 'includes/class-bfm-entity-tag-map.php';
 		require_once BFM_PATH . 'includes/class-bfm-entity-info-map.php';
+		require_once BFM_PATH . 'includes/class-bfm-search.php';
 		require_once BFM_PATH . 'includes/class-bfm-features-block.php';
 		require_once BFM_PATH . 'includes/class-bfm-featured-entities-block.php';
+		require_once BFM_PATH . 'includes/class-bfm-metadata-field-block.php';
 
 		// Admin (and its AJAX endpoints) is only needed in wp-admin, to avoid
 		// loading it on the front end. is_admin() is also true during
@@ -113,6 +115,12 @@ class BFM_Core {
 			$tag_sync->register_hooks();
 		}
 
+		// ── Search integration (searchable metadata fields in site searches) ─
+		if ( class_exists( 'BFM_Search' ) ) {
+			$search = new BFM_Search();
+			$search->register_hooks();
+		}
+
 		// ── "Características" Gutenberg block (dynamic, front + editor) ────────
 		if ( class_exists( 'BFM_Features_Block' ) ) {
 			$features_block = new BFM_Features_Block();
@@ -123,6 +131,12 @@ class BFM_Core {
 		if ( class_exists( 'BFM_Featured_Entities_Block' ) ) {
 			$featured_entities_block = new BFM_Featured_Entities_Block();
 			$featured_entities_block->register_hooks();
+		}
+
+		// ── "Metadata Field" Gutenberg block (dynamic, generic field display) ─
+		if ( class_exists( 'BFM_Metadata_Field_Block' ) ) {
+			$metadata_field_block = new BFM_Metadata_Field_Block();
+			$metadata_field_block->register_hooks();
 		}
 
 		// ── Admin ─────────────────────────────────────────────────────────────

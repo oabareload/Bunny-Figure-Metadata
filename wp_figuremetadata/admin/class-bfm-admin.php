@@ -202,7 +202,8 @@ class BFM_Admin {
 			$clean[ $meta_key ] = array(
 				'label'        => $label,
 				'entity'       => ! empty( $row['entity'] ),
-				'type'         => in_array( $row['type'] ?? '', array( 'text', 'number', 'currency', 'month' ), true ) ? $row['type'] : 'text',
+				'type'         => in_array( $row['type'] ?? '', array( 'text', 'number', 'currency', 'month', 'textarea' ), true ) ? $row['type'] : 'text',
+				'searchable'   => ! empty( $row['searchable'] ),
 				'tag'          => ! empty( $row['entity'] ) && ! empty( $row['tag'] ),
 				'url'          => ! empty( $row['entity'] ) && ! empty( $row['url'] ),
 				'logo'         => ! empty( $row['entity'] ) && ! empty( $row['logo'] ),
@@ -318,6 +319,18 @@ class BFM_Admin {
 					</div>
 				</div>
 			</div>
+			<div id="bfm-post-textarea-modal" class="bfm-modal" hidden>
+				<div class="bfm-modal-content bfm-modal-content-wide" role="dialog" aria-modal="true" aria-labelledby="bfm-post-textarea-modal-title">
+					<h2 id="bfm-post-textarea-modal-title"><?php esc_html_e( 'Editar contenido', 'bunny-figure-metadata' ); ?></h2>
+					<p class="description bfm-post-textarea-modal-subtitle" id="bfm-post-textarea-modal-subtitle"></p>
+					<label for="bfm-post-textarea-editor" class="screen-reader-text"><?php esc_html_e( 'Contenido', 'bunny-figure-metadata' ); ?></label>
+					<textarea id="bfm-post-textarea-editor" class="widefat" rows="10"></textarea>
+					<p class="submit">
+						<button type="button" class="button button-primary" id="bfm-post-textarea-confirm"><?php esc_html_e( 'Confirmar', 'bunny-figure-metadata' ); ?></button>
+						<button type="button" class="button" id="bfm-post-textarea-cancel"><?php esc_html_e( 'Cancelar', 'bunny-figure-metadata' ); ?></button>
+					</p>
+				</div>
+			</div>
 		</div>
 		<?php
 	}
@@ -349,6 +362,7 @@ class BFM_Admin {
 						<th><?php esc_html_e( 'Meta key', 'bunny-figure-metadata' ); ?></th>
 						<th><?php esc_html_e( 'Nombre', 'bunny-figure-metadata' ); ?></th>
 						<th><?php esc_html_e( 'Tipo', 'bunny-figure-metadata' ); ?></th>
+						<th><?php esc_html_e( 'Búsqueda', 'bunny-figure-metadata' ); ?></th>
 						<th><?php esc_html_e( 'Catálogo / entidad', 'bunny-figure-metadata' ); ?></th>
 						<th><?php esc_html_e( 'Integraciones del catálogo', 'bunny-figure-metadata' ); ?></th>
 					</tr></thead>
@@ -358,10 +372,11 @@ class BFM_Admin {
 							<td><code><?php echo esc_html( $field['meta_key'] ); ?></code><input type="hidden" name="<?php echo esc_attr( self::settings_input_name( $index, 'meta_key' ) ); ?>" value="<?php echo esc_attr( $field['meta_key'] ); ?>"></td>
 							<td><input type="text" class="regular-text" name="<?php echo esc_attr( self::settings_input_name( $index, 'label' ) ); ?>" value="<?php echo esc_attr( $field['label'] ); ?>"></td>
 							<td><select name="<?php echo esc_attr( self::settings_input_name( $index, 'type' ) ); ?>">
-								<?php foreach ( array( 'text', 'number', 'currency', 'month' ) as $type ) : ?>
+								<?php foreach ( array( 'text', 'number', 'currency', 'month', 'textarea' ) as $type ) : ?>
 									<option value="<?php echo esc_attr( $type ); ?>" <?php selected( $field['type'], $type ); ?>><?php echo esc_html( $type ); ?></option>
 								<?php endforeach; ?>
 							</select></td>
+							<td><label><input type="checkbox" name="<?php echo esc_attr( self::settings_input_name( $index, 'searchable' ) ); ?>" value="1" <?php checked( ! empty( $field['searchable'] ) ); ?>> <?php esc_html_e( 'Incluir este metadato en las búsquedas de WordPress', 'bunny-figure-metadata' ); ?></label></td>
 							<td><label><input type="checkbox" class="bfm-catalog-toggle" name="<?php echo esc_attr( self::settings_input_name( $index, 'entity' ) ); ?>" value="1" <?php checked( $field['entity'] ); ?>> <?php esc_html_e( 'Usar entidad', 'bunny-figure-metadata' ); ?></label></td>
 							<td><div class="bfm-catalog-integrations" <?php echo $field['entity'] ? '' : 'hidden'; ?>>
 								<div class="bfm-catalog-checks">

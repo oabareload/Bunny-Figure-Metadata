@@ -212,4 +212,77 @@
 			$loadMore.show();
 		}
 	});
+
+	// ── Textarea modal management for bulk maintenance ───────────────────────
+	var $textareaModal = $('#bfm-post-textarea-modal');
+	var $textareaEditor = $('#bfm-post-textarea-editor');
+	var $textareaModalTitle = $('#bfm-post-textarea-modal-title');
+	var $textareaModalSubtitle = $('#bfm-post-textarea-modal-subtitle');
+	var activeTextareaContext = null;
+
+	function closeTextareaModal() {
+		if ($textareaModal.length) {
+			$textareaModal.prop('hidden', true);
+		}
+		if (activeTextareaContext && activeTextareaContext.$trigger) {
+			activeTextareaContext.$trigger.trigger('focus');
+		}
+		activeTextareaContext = null;
+	}
+
+	$(document).on('click', '.bfm-card-textarea-open', function () {
+		var $btn = $(this);
+		var $compact = $btn.closest('.bfm-card-textarea-compact');
+		var $hidden = $compact.find('.bfm-card-textarea-hidden');
+		var $snippet = $compact.find('.bfm-card-textarea-snippet');
+		var label = $btn.data('label') || '';
+		var postTitle = $btn.data('post-title') || '';
+		var currentValue = $hidden.val() || '';
+
+		activeTextareaContext = {
+			$hidden: $hidden,
+			$snippet: $snippet,
+			$trigger: $btn
+		};
+
+		$textareaModalTitle.text(label || 'Editar contenido');
+		$textareaModalSubtitle.text(postTitle);
+		$textareaEditor.val(currentValue);
+		$textareaModal.prop('hidden', false);
+		$textareaEditor.trigger('focus');
+	});
+
+	$('#bfm-post-textarea-confirm').on('click', function () {
+		if (!activeTextareaContext) {
+			return;
+		}
+		var newVal = $textareaEditor.val();
+		activeTextareaContext.$hidden.val(newVal);
+
+		var preview = $.trim(newVal.replace(/\s+/g, ' '));
+		if (preview.length > 0) {
+			var display = preview.length > 45 ? preview.substring(0, 42) + '...' : preview;
+			activeTextareaContext.$snippet.text(display).attr('title', newVal);
+		} else {
+			activeTextareaContext.$snippet.html('<span class="bfm-card-textarea-empty">(Vacío)</span>').removeAttr('title');
+		}
+
+		closeTextareaModal();
+	});
+
+	$('#bfm-post-textarea-cancel').on('click', function () {
+		closeTextareaModal();
+	});
+
+	$textareaModal.on('click', function (e) {
+		if (e.target === this) {
+			closeTextareaModal();
+		}
+	});
+
+	$(document).on('keydown', function (e) {
+		if (27 === e.which && $textareaModal.length && !$textareaModal.prop('hidden')) {
+			closeTextareaModal();
+		}
+	});
 })(jQuery);

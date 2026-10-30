@@ -43,7 +43,7 @@ class BFM_Post_Editor {
 	public function register_meta(): void {
 
 		foreach ( BFM_Meta_Fields::all() as $meta_key => $field ) {
-
+			$is_textarea = 'textarea' === ( $field['type'] ?? 'text' );
 			register_post_meta(
 				'post',
 				$meta_key,
@@ -51,7 +51,7 @@ class BFM_Post_Editor {
 					'type'              => 'string',
 					'single'            => true,
 					'show_in_rest'      => true,
-					'sanitize_callback' => 'sanitize_text_field',
+					'sanitize_callback' => $is_textarea ? 'sanitize_textarea_field' : 'sanitize_text_field',
 					'auth_callback'     => function ( $allowed, $meta_key, $post_id, $user_id ) {
 						return user_can( $user_id, 'edit_post', $post_id );
 					},
@@ -122,7 +122,10 @@ class BFM_Post_Editor {
 				true
 			);
 
-			echo '<div class="bfm-figure-meta-field">';
+			$is_textarea = 'textarea' === ( $field['type'] ?? 'text' );
+			$field_classes = 'bfm-figure-meta-field' . ( $is_textarea ? ' bfm-figure-meta-field--textarea' : '' );
+
+			echo '<div class="' . esc_attr( $field_classes ) . '">';
 
 			printf(
 				'<label for="%1$s"><strong>%2$s</strong></label>',
@@ -132,6 +135,12 @@ class BFM_Post_Editor {
 
 			if ( $is_tag_source ) {
 				$this->render_chip_field( $meta_key, $value );
+			} elseif ( $is_textarea ) {
+				printf(
+					'<textarea id="%1$s" name="%1$s" class="widefat bfm-figure-meta-textarea" rows="6">%2$s</textarea>',
+					esc_attr( $meta_key ),
+					esc_textarea( $value )
+				);
 			} else {
 				printf(
 					'<input type="text" id="%1$s" name="%1$s" value="%2$s" class="widefat" autocomplete="off">',
@@ -268,8 +277,13 @@ class BFM_Post_Editor {
 			return implode( ' & ', $parts );
 		}
 
-		$clean = sanitize_text_field( $value );
-		if ( 'no dice' === strtolower( trim( $clean ) ) ) {
+		if ( 'textarea' === ( $field['type'] ?? 'text' ) ) {
+			$clean = trim( sanitize_textarea_field( $value ) );
+		} else {
+			$clean = trim( sanitize_text_field( $value ) );
+		}
+
+		if ( 'no dice' === strtolower( $clean ) ) {
 			return '';
 		}
 
@@ -401,6 +415,18 @@ class BFM_Post_Editor {
 			.bfm-figure-meta-field label {
 				display: block;
 				margin-bottom: 6px;
+			}
+
+			.bfm-figure-meta-field--textarea {
+				grid-column: 1 / -1;
+			}
+
+			.bfm-figure-meta-textarea {
+				min-height: 140px;
+				resize: vertical;
+				line-height: 1.5;
+				font-family: inherit;
+				box-sizing: border-box;
 			}
 
 			.bfm-figure-meta-field .description {

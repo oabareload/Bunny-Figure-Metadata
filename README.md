@@ -4,7 +4,7 @@ Plugin de WordPress, independiente y autónomo, para administrar la metadata est
 
 ## Estado
 
-Versión 1.8.0. Configuración global de metadatos + alta de nuevos metadatos + catálogos dinámicos + editor de metadata basado en chips de entidad + asociación de cada valor de entidad con un TAG de WordPress + información complementaria (URL y logo, con origen de imagen configurable por metadato: personalizado o desde un post relacionado) por entidad + resaltado visual de campos vacíos (TAG/URL/Logo) en las páginas de entidad + **identidad compuesta para Personaje** (distingue personajes homónimos por Serie/Ilustrador, solo para la resolución de imágenes y el conteo/agrupación de ese metadato) + listado de posts asociados a cada valor de entidad + mantenimiento administrativo de posts con filtros, carga por AJAX, vista previa de solo lectura (miniatura + excerpt) por tarjeta y edición directa de todos los metadatos BFM + sincronización de TAGs únicamente al publicar/programar + bloque dinámico de Gutenberg para mostrar las características de la figura con configuración global para todos los metadatos (presentación **Clásica** en lista o **Tarjetas** en cuadrícula, elegible en el propio bloque) + valor por defecto configurable por campo en Features + enlace a TAG o enlace externo configurable por campo + bloque dinámico de Gutenberg con caché para mostrar un ranking compacto de entidades destacadas (pensado para el footer; diseño **Lista** o **Tarjetas** en cuadrícula, elegible en el propio bloque). No hay Bunny Score, merge de entidades ni panel de salud en esta fase.
+Versión 1.9.0. Configuración global de metadatos + alta de nuevos metadatos (tipos text, number, currency, month y **textarea** para historias o descripciones extensas) + configuración individual de **búsqueda de WordPress (`searchable`)** + integración no invasiva de búsquedas mediante subconsultas `EXISTS` correlacionadas + catálogos dinámicos + editor de metadata basado en chips de entidad y textarea amplio para campos multilínea + asociación de cada valor de entidad con un TAG de WordPress + información complementaria (URL y logo, con origen de imagen configurable por metadato: personalizado o desde un post relacionado) por entidad + resaltado visual de campos vacíos (TAG/URL/Logo) en las páginas de entidad + **identidad compuesta para Personaje** (distingue personajes homónimos por Serie/Ilustrador, solo para la resolución de imágenes y el conteo/agrupación de ese metadato) + listado de posts asociados a cada valor de entidad + mantenimiento administrativo de posts con filtros, carga por AJAX, vista previa de solo lectura (miniatura + excerpt) por tarjeta, edición directa de todos los metadatos BFM y **modal accesible para edición de campos Textarea** + sincronización de TAGs únicamente al publicar/programar + bloque dinámico de Gutenberg para mostrar las características de la figura con configuración global para todos los metadatos (presentación **Clásica** en lista o **Tarjetas** en cuadrícula, elegible en el propio bloque) + bloque dinámico de Gutenberg con caché para mostrar un ranking compacto de entidades destacadas (pensado para el footer; diseño **Lista** o **Tarjetas** en cuadrícula, elegible en el propio bloque) + **nuevo bloque Gutenberg dinámico genérico "Metadata Field"** para presentar individualmente cualquier metadato (con personalización de etiquetas, elementos HTML independientes para título y valor, y condición de visibilidad para integración limpia en patrones). No hay Bunny Score, merge de entidades ni panel de salud en esta fase.
 
 ## ¿Qué hace?
 
@@ -13,6 +13,8 @@ Versión 1.8.0. Configuración global de metadatos + alta de nuevos metadatos + 
 En **Figure Metadata > Settings** se administra la lista global de metadatos disponibles en el editor de posts. Cada fila permite definir:
 
 - La **meta key** y el **nombre** visible del campo.
+- El **tipo** de metadato: `text`, `number`, `currency`, `month` o `textarea` (para historias o descripciones largas multilínea).
+- La casilla **Búsqueda** («Incluir este metadato en las búsquedas de WordPress»): activa/desactiva (`searchable`, boolean, falso por defecto) la participación del metadato en las búsquedas globales de frontend del sitio.
 - Si el metadata funciona como **catálogo/entidad**.
 
 La configuración inicial conserva los 12 campos actuales y marca como catálogos Manufacturer, Illustrator, Series y Character. Se pueden añadir nuevos metadatos desde Settings sin modificar código. Cualquier metadata marcada como catálogo utiliza la misma infraestructura existente de entidades: valores independientes, asociación con TAG, URL oficial, logo, conteo de posts y pantalla administrativa propia. Si no está marcada como catálogo, se muestra y guarda como metadata normal.
@@ -36,7 +38,9 @@ En el editor clásico de posts, añade una metabox **"🐰 Datos de la figura"**
 - `_bunny_figure_character` — Personaje
 - `_bunny_figure_version` — Versión
 
-Los campos que no están marcados como catálogo siguen siendo inputs de texto simples, como en el snippet original.
+Los campos de tipo `textarea` (como una historia o descripción) se muestran como áreas de texto amplias a ancho completo de la metabox (`.bfm-figure-meta-field--textarea`), con altura generosa y redimensionamiento vertical activo, permitiendo redactar y revisar cómodamente historias y descripciones con saltos de línea y caracteres Unicode sin alterar el flujo del editor.
+
+Los campos que no están marcados como catálogo ni como textarea siguen siendo inputs de texto simples, como en el snippet original.
 
 Los campos marcados como catálogo se editan como **chips individuales** en lugar de un campo de texto libre. Inicialmente son Fabricante, Ilustrador, Serie y Personaje:
 
@@ -51,6 +55,8 @@ Los campos marcados como catálogo se editan como **chips individuales** en luga
 ### 3. Mantenimiento administrativo de posts
 
 En **Figure Metadata > Posts** se dispone de una interfaz de mantenimiento para consultar y editar todos los metadatos BFM de los posts desde una sola cuadrícula de tarjetas. La lista carga los primeros 20 posts y sigue cargando más por AJAX/infinite scroll, con filtros combinables por título, metadato, estado del valor y valor concreto. Cada tarjeta muestra el ID y el título en la cabecera; a continuación, una **vista previa de solo lectura** con la miniatura destacada del post (tamaño `thumbnail`, o un placeholder discreto si no tiene) y su excerpt manual (o "Sin excerpt." si no existe, sin generarlo automáticamente); después, un control editable por campo; y el guardado se hace por AJAX con comprobación de nonce y permisos del usuario sobre cada post. La miniatura y el excerpt viajan en la misma respuesta AJAX que ya arma cada tarjeta y nunca forman parte del payload de guardado.
+
+Para los campos de tipo **`textarea`** en las tarjetas de edición masiva, se implementa una presentación compacta con una vista previa truncada del texto y un botón **Editar**. Al hacer clic, se abre un modal accesible (`#bfm-post-textarea-modal`) con un área de texto amplia que muestra el contenido completo. Al confirmar en el modal, se actualiza el valor del campo oculto de la tarjeta y su vista previa; al cancelar o pulsar la tecla Escape, el contenido permanece intacto. El guardado final del post mantiene exactamente el mismo flujo centralizado vía AJAX de la tarjeta sin duplicar peticiones.
 
 ### 4. Sincronización metadata → TAGs (solo al publicar o programar)
 Los metadatos marcados como catálogo se sincronizan con los tags (`post_tag`) del post. Inicialmente son Fabricante, Ilustrador, Serie y Personaje:
@@ -247,6 +253,35 @@ El diseño solo cambia el marcado de la lista ya resuelta: **no forma parte de l
 - La clave de caché depende de la metadata, la cantidad, el orden, y de si logos/enlace a TAG están activos (las opciones que determinan qué hay que calcular).
 - **Invalidación perezosa (lazy) por versión**: al publicar o programar un post, se incrementa un contador de versión por cada uno de los cuatro campos de entidad (una única lectura/escritura en `wp_options`). Ninguna caché se recalcula en ese momento: las cachés bajo la versión anterior simplemente dejan de usarse y expiran solas según su propio TTL. El siguiente visitante regenera el resultado y lo vuelve a cachear.
 
+### 10. Bloque dinámico "Metadata Field" (nuevo en 1.9.0)
+
+Un bloque de Gutenberg **dinámico/server-side** (`bunny-figure-metadata/metadata-field`) pensado para presentar individualmente cualquier metadato registrado en Bunny Figure Metadata, como historias narrativas, notas de diseño o descripciones detalladas.
+
+**Características y opciones disponibles en el Inspector:**
+
+- **Selección dinámica del metadato**: Desplegable alimentado directamente desde `BFM_Meta_Fields::all()`, mostrando el identificador técnico y la etiqueta administrativa. Si un metadato deja de existir o cambia su identificador, el bloque gestiona la situación limpiamente devolviendo una cadena vacía sin provocar errores.
+- **Configuración de etiqueta**:
+  - Mostrar u ocultar la etiqueta (`showLabel`).
+  - Personalizar el texto visible de la etiqueta (`customLabel`) sin alterar la definición original del metadato.
+  - Seleccionar el elemento HTML de la etiqueta: `h1`, `h2`, `h3`, `h4`, `h5`, `h6`, `p`, `div`, `span` (por defecto `h2`).
+- **Configuración del valor**:
+  - Seleccionar de forma independiente el elemento HTML del valor: `h1`, `h2`, `h3`, `h4`, `h5`, `h6`, `p`, `div`, `span` (por defecto `div`).
+  - Clases CSS adicionales para el valor (`valueClassName`).
+  - Formato adaptado al tipo: los campos de tipo `textarea` conservan los saltos de línea (`nl2br`) y escapan con seguridad cualquier contenido HTML arbitrario (`esc_html`).
+- **Condición de visibilidad («Mostrar únicamente si el metadato tiene contenido»)**:
+  - Activa por defecto (`hideIfEmpty`). Cuando está habilitada, si el valor es `null`, cadena vacía, solo espacios o el valor excluido `No dice`, el bloque no genera absolutamente ningún marcado HTML (0 bytes: sin contenedor envolvente, sin títulos vacíos ni separaciones residuales). Esto permite incluir el bloque de forma fija dentro de **patrones de publicación (Block Patterns)**.
+
+### 11. Integración con las búsquedas de WordPress (nuevo en 1.9.0)
+
+Los metadatos que tengan activa la propiedad `searchable` participan en las búsquedas estándar de WordPress en el frontend del sitio:
+
+- Combina de manera no destructiva la búsqueda nativa en `post_title`, `post_content` y `post_excerpt` con los metadatos configurados mediante una subconsulta `EXISTS` correlacionada sobre `wp_postmeta`.
+- **Cero duplicados**: al usar `EXISTS (SELECT 1 FROM wp_postmeta ...)` no se producen duplicados de posts y no se requiere `DISTINCT` costoso.
+- **Cero JOINs adicionales**: no altera los JOINs de la consulta principal de posts.
+- **Consultas preparadas**: utiliza escape estricto y cláusula `IN (...)` para evaluar todos los metadatos participantes en una sola condición.
+- No altera las búsquedas en la administración de WordPress (`is_admin()`).
+- Descarta correctamente valores nulos y vacíos.
+
 ## Rendimiento
 
 - Cada sección de entidad resuelve sus valores con **una sola consulta agregada** a `wp_postmeta` (vía `$wpdb`), sin recorrer todos los posts con `WP_Query` y sin patrones N+1.
@@ -296,8 +331,10 @@ wp_figuremetadata/
 │   ├── class-bfm-entity-repository.php
 │   ├── class-bfm-entity-tag-map.php
 │   ├── class-bfm-entity-info-map.php
+│   ├── class-bfm-search.php
 │   ├── class-bfm-features-block.php
-│   └── class-bfm-featured-entities-block.php
+│   ├── class-bfm-featured-entities-block.php
+│   └── class-bfm-metadata-field-block.php
 ├── admin/
 │   ├── class-bfm-admin.php
 │   ├── class-bfm-admin-header.php
@@ -314,18 +351,26 @@ wp_figuremetadata/
 │   │   ├── block.json
 │   │   ├── index.js
 │   │   └── style.css
-│   └── featured-entities/
+│   ├── featured-entities/
+│   │   ├── block.json
+│   │   ├── index.js
+│   │   └── style.css
+│   └── metadata-field/
 │       ├── block.json
 │       ├── index.js
 │       └── style.css
-└── assets/
-    ├── css/
-    │   ├── bunny-admin.css
-    │   └── admin.css
-    └── js/
-        ├── entity-tag-select.js
-        ├── entity-info.js
-        └── post-editor-chips.js
+├── assets/
+│   ├── css/
+│   │   ├── bunny-admin.css
+│   │   └── admin.css
+│   └── js/
+│       ├── entity-tag-select.js
+│       ├── entity-info.js
+│       ├── metadata-settings.js
+│       ├── post-editor-chips.js
+│       └── post-metadata-maintenance.js
+└── tests/
+    └── test-suite.php
 ```
 
 ## Archivos de referencia (raíz del proyecto)

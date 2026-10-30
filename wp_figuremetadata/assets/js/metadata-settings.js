@@ -48,7 +48,11 @@
 			.append($('<option>', { value: 'text', text: 'text', selected: true }))
 			.append($('<option>', { value: 'number', text: 'number' }))
 			.append($('<option>', { value: 'currency', text: 'currency' }))
-			.append($('<option>', { value: 'month', text: 'month' }))));
+			.append($('<option>', { value: 'month', text: 'month' }))
+			.append($('<option>', { value: 'textarea', text: 'textarea' }))));
+		$row.append($('<td>').append($('<label>').append($('<input>', {
+			type: 'checkbox', name: inputName('searchable'), value: '1'
+		})).append(' Incluir este metadato en las búsquedas de WordPress')));
 		$row.append($('<td>').append($('<label>').append($('<input>', {
 			type: 'checkbox', name: inputName('entity'), value: '1'
 		})).append(' Usar entidad')));
